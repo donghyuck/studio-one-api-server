@@ -38,6 +38,36 @@
 ### 외부 API
 - `gemini.api.key`
 
+## 실행 요약
+
+### 필수 준비 사항
+- JDK 17 설치
+- Gradle Wrapper 사용 가능 상태(`gradlew`, `gradlew.bat`)
+- 로컬 또는 접근 가능한 Nexus 저장소(`nexus.releasesUrl`)
+- 실행에 필요한 외부 설정 값 준비:
+  - `JASYPT_ENCRYPTOR_PASSWORD`
+  - 메일 설정(`mail.*`)
+  - 오브젝트 스토리지(`s3.*`)
+  - 외부 API 키(`gemini.api.key`)
+
+### 실행 방법
+
+#### 개발 환경 (기본값: dev 프로파일)
+```bash
+./gradlew bootRun
+```
+
+#### 로컬 프로파일
+```bash
+./gradlew bootRun --args='--spring.profiles.active=local'
+```
+
+#### 빌드 후 실행
+```bash
+./gradlew clean build
+java -jar build/libs/*.jar --spring.profiles.active=dev
+```
+
 ## 보안 주의사항
 - `gradle.properties`에는 민감정보가 포함될 수 있으므로, 실제 값은 사내 보안 정책에 맞게 관리하세요.
 - 예시 값이나 테스트용 키는 운영 환경에 사용하지 마세요.
