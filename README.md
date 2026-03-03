@@ -68,6 +68,37 @@
 java -jar build/libs/*.jar --spring.profiles.active=dev
 ```
 
+## 로컬 DB (Docker, Windows 권장)
+
+### 준비 사항
+- Windows 10/11
+- Docker Desktop 설치 및 실행(WSL2 backend 권장)
+- 포트 `5432`가 비어 있어야 함
+
+### 구성 내용
+- Postgres 컨테이너: `studio-one-postgres`
+- DB: `studio_db`
+- 유저/비번: `studioapi` / `studioapi`
+- 스키마: `studioapi`
+- pgvector: `CREATE EXTENSION vector` 자동 적용
+- 기본 데이터: 일부 모듈은 Flyway SQL에 초기 데이터가 포함될 수 있음(예: security-acl의 `R__sync.sql`은 ACL 관련 seed/sync 수행)
+- dev 기본 계정/권한/그룹: `application-dev.yml`에서만 dev seed 마이그레이션이 실행됨(`admin` / `studioapi`, 그룹 `default`, 롤 `ROLE_ADMIN`/`ROLE_MANAGER`)
+
+### 실행 방법 (PowerShell)
+```powershell
+.\scripts\db-up.ps1
+```
+
+### 중지 (데이터 유지)
+```powershell
+.\scripts\db-down.ps1
+```
+
+### 접속 정보
+- JDBC: `jdbc:log4jdbc:postgresql://localhost:5432/studio_db`
+- Username: `studioapi`
+- Password: `studioapi`
+
 ## 보안 주의사항
 - `gradle.properties`에는 민감정보가 포함될 수 있으므로, 실제 값은 사내 보안 정책에 맞게 관리하세요.
 - 예시 값이나 테스트용 키는 운영 환경에 사용하지 마세요.
