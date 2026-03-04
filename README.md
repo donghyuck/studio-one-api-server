@@ -83,6 +83,8 @@ java -jar build/libs/*.jar --spring.profiles.active=dev
 - pgvector: `CREATE EXTENSION vector` 자동 적용
 - 기본 데이터: 일부 모듈은 Flyway SQL에 초기 데이터가 포함될 수 있음(예: security-acl의 `R__sync.sql`은 ACL 관련 seed/sync 수행)
 - dev 기본 계정/권한/그룹: `application-dev.yml`에서만 dev seed 마이그레이션이 실행됨(`admin` / `studioapi`, 그룹 `default`, 롤 `ROLE_ADMIN`/`ROLE_MANAGER`)
+- 비밀번호 포맷: Spring Security `DelegatingPasswordEncoder` 사용 시 DB의 `password_hash`는 `{bcrypt}...` 같은 prefix가 필요함(dev seed는 해당 포맷으로 저장)
+- forums 테이블: `tb_application_forums` 등은 `src/main/resources/schema/forums/postgres/V1100__create_forums_tables.sql`로 생성됨
 
 ### 실행 방법 (PowerShell)
 ```powershell

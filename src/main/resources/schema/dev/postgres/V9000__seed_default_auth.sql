@@ -18,7 +18,7 @@ ON CONFLICT (name) DO NOTHING;
 -- Password: studioapi
 -- BCrypt (cost 10): $2y$10$99oNsR.m4nrLCcLfBvowqO451JYznC39K0Xj/vjpfitSwLgADujUG
 INSERT INTO studioapi.tb_application_user (username, password_hash, email, name)
-VALUES ('admin', '$2y$10$99oNsR.m4nrLCcLfBvowqO451JYznC39K0Xj/vjpfitSwLgADujUG', 'admin@studio.local', 'Admin')
+VALUES ('admin', '{bcrypt}$2y$10$99oNsR.m4nrLCcLfBvowqO451JYznC39K0Xj/vjpfitSwLgADujUG', 'admin@studio.local', 'Admin')
 ON CONFLICT (username) DO NOTHING;
 
 -- Map admin -> ROLE_ADMIN
