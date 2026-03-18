@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Studio One Server</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --bg-start: #eef4ff;
+            --bg-end: #d5eadf;
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --text-main: #152033;
+            --text-sub: #49566b;
+            --accent: #006e63;
+            --border: rgba(21, 32, 51, 0.1);
+            --shadow: 0 28px 70px rgba(29, 50, 86, 0.18);
+            --game-bg: #0a1020;
+            --game-grid: rgba(100, 135, 230, 0.1);
+            --wall: #3e73f5;
+            --dot: #ffd75c;
+            --pacman: #ffc400;
+            --ghost: #ff6b6b;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+            font-family: "Pretendard", "Noto Sans KR", sans-serif;
+            color: var(--text-main);
+            background:
+                radial-gradient(circle at top left, rgba(0, 110, 99, 0.16), transparent 32%),
+                linear-gradient(135deg, var(--bg-start), var(--bg-end));
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+
+        body.has-remote-background::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background-image: var(--remote-bg);
+            background-size: cover;
+            background-position: center;
+            filter: saturate(1.04);
+            transform: scale(1.02);
+            z-index: -2;
+        }
+
+        body.has-remote-background::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background:
+                linear-gradient(135deg, rgba(10, 16, 28, 0.54), rgba(0, 110, 99, 0.24)),
+                radial-gradient(circle at top left, rgba(255, 255, 255, 0.10), transparent 30%);
+            z-index: -1;
+        }
+
+        main {
+            width: min(860px, 100%);
+            padding: 40px 32px;
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            background: var(--card-bg);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(10px);
+            animation: card-enter 420ms ease-out both;
+        }
+
+        @keyframes card-enter {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: rgba(15, 118, 110, 0.1);
+            color: var(--accent);
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        h1 {
+            margin: 18px 0 12px;
+            font-size: clamp(32px, 5vw, 48px);
+            line-height: 1.1;
+        }
+
+        p {
+            margin: 0;
+            font-size: 18px;
+            line-height: 1.7;
+            color: var(--text-sub);
+        }
+
+        .status {
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 8px 0;
+            font-size: 15px;
+        }
+
+        .status-row strong {
+            color: var(--text-main);
+            font-weight: 700;
+        }
+
+        .game-section {
+            margin-top: 28px;
+            border-top: 1px solid var(--border);
+            padding-top: 24px;
+        }
+
+        .game-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+
+        .game-title {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .game-stats {
+            display: flex;
+            gap: 14px;
+            align-items: center;
+            font-weight: 600;
+            color: var(--text-sub);
+            font-size: 14px;
+        }
+
+        .game-shell {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 14px;
+            align-items: start;
+        }
+
+        canvas {
+            width: 100%;
+            max-width: 640px;
+            aspect-ratio: 1 / 1;
+            border-radius: 18px;
+            border: 1px solid rgba(62, 115, 245, 0.4);
+            background:
+                linear-gradient(var(--game-grid) 1px, transparent 1px),
+                linear-gradient(90deg, var(--game-grid) 1px, transparent 1px),
+                var(--game-bg);
+            background-size: 20px 20px, 20px 20px, auto;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 12px 30px rgba(10, 16, 32, 0.28);
+            touch-action: none;
+        }
+
+        .game-controls {
+            display: grid;
+            gap: 8px;
+        }
+
+        .btn {
+            border: 1px solid rgba(0, 110, 99, 0.24);
+            background: #fff;
+            color: #073b38;
+            border-radius: 10px;
+            padding: 9px 12px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background: #f2fffb;
+        }
+
+        .hint {
+            margin-top: 12px;
+            color: var(--text-sub);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .dpad {
+            margin-top: 10px;
+            display: none;
+            grid-template-columns: repeat(3, 46px);
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .dpad button {
+            width: 46px;
+            height: 46px;
+            border: 1px solid rgba(21, 32, 51, 0.16);
+            background: #f8fafc;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-main);
+            touch-action: manipulation;
+        }
+
+        .dpad .blank {
+            visibility: hidden;
+        }
+
+        @media (max-width: 780px) {
+            body {
+                padding: 14px;
+            }
+
+            main {
+                padding: 24px 18px;
+            }
+
+            p {
+                font-size: 16px;
+            }
+
+            .game-shell {
+                grid-template-columns: 1fr;
+            }
+
+            .game-controls {
+                grid-auto-flow: column;
+                grid-auto-columns: 1fr;
+            }
+
+            .dpad {
+                display: grid;
+            }
+        }
+    </style>
+</head>
+<body>
+<main>
+    <span class="badge">Service Online</span>
+    <h1>서비스가 정상적으로 동작 중입니다.</h1>
+    <p>브라우저에서 직접 접속했을 때 서버 상태를 바로 확인할 수 있도록 기본 안내 페이지를 제공합니다.</p>
+    <div class="status">
+        <div class="status-row">
+            <span>서비스</span>
+            <strong>Studio One Server All</strong>
+        </div>
+        <div class="status-row">
+            <span>시작 시각</span>
+            <strong id="startedAt">확인 중</strong>
+        </div>
+        <div class="status-row">
+            <span>가동 시간</span>
+            <strong id="uptime">확인 중</strong>
+        </div>
+    </div>
+
+    <section class="game-section">
+        <div class="game-head">
+            <h2 class="game-title">Pac-Man Mini</h2>
+            <div class="game-stats">
+                <span>Score <strong id="score">0</strong></span>
+                <span>Lives <strong id="lives">3</strong></span>
+                <span id="stageMessage">Play</span>
+            </div>
+        </div>
+        <div class="game-shell">
+            <canvas id="pacmanGame" width="640" height="640" aria-label="Pac-Man Mini Game"></canvas>
+            <div class="game-controls">
+                <button id="restartButton" class="btn" type="button">Restart</button>
+                <button id="pauseButton" class="btn" type="button">Pause</button>
+            </div>
+        </div>
+        <p class="hint">조작: 키보드 방향키 또는 WASD. 모바일에서는 아래 방향 버튼을 사용하세요.</p>
+        <div class="dpad" role="group" aria-label="모바일 방향 조작">
+            <span class="blank"></span>
+            <button type="button" data-dir="up" aria-label="위로 이동">↑</button>
+            <span class="blank"></span>
+            <button type="button" data-dir="left" aria-label="왼쪽으로 이동">←</button>
+            <button type="button" data-dir="down" aria-label="아래로 이동">↓</button>
+            <button type="button" data-dir="right" aria-label="오른쪽으로 이동">→</button>
+        </div>
+    </section>
+</main>
+<script src="/service-status-config.js"></script>
+<script>
+    (function applyRemoteBackground() {
+        var config = window.__SERVICE_STATUS__ || {};
+        var backgroundImageUrl = config.backgroundImageUrl;
+        if (!backgroundImageUrl) {
+            return;
+        }
+        document.body.style.setProperty("--remote-bg", "url('" + backgroundImageUrl.replace(/'/g, "\\'") + "')");
+        document.body.classList.add("has-remote-background");
+    })();
+
+    (function renderStatus() {
+        var config = window.__SERVICE_STATUS__ || {};
+        var startedAt = document.getElementById("startedAt");
+        var uptime = document.getElementById("uptime");
+
+        if (startedAt) {
+            startedAt.textContent = config.startedAt || "-";
+        }
+
+        function formatDuration(totalSeconds) {
+            if (typeof totalSeconds !== "number" || totalSeconds < 0) {
+                return "-";
+            }
+            var days = Math.floor(totalSeconds / 86400);
+            var hours = Math.floor((totalSeconds % 86400) / 3600);
+            var minutes = Math.floor((totalSeconds % 3600) / 60);
+            var seconds = totalSeconds % 60;
+            var parts = [];
+            if (days > 0) parts.push(days + "d");
+            if (hours > 0 || parts.length) parts.push(hours + "h");
+            if (minutes > 0 || parts.length) parts.push(minutes + "m");
+            parts.push(seconds + "s");
+            return parts.join(" ");
+        }
+
+        function updateUptime() {
+            if (!uptime) {
+                return;
+            }
+            uptime.textContent = formatDuration(config.uptimeSeconds);
+            if (typeof config.uptimeSeconds === "number") {
+                config.uptimeSeconds += 1;
+            }
+        }
+
+        updateUptime();
+        window.setInterval(updateUptime, 1000);
+    })();
+
+    (function setupPacmanMiniGame() {
+        var canvas = document.getElementById("pacmanGame");
+        var scoreEl = document.getElementById("score");
+        var livesEl = document.getElementById("lives");
+        var stageMessageEl = document.getElementById("stageMessage");
+        var restartButton = document.getElementById("restartButton");
+        var pauseButton = document.getElementById("pauseButton");
+
+        if (!canvas || !scoreEl || !livesEl || !stageMessageEl || !restartButton || !pauseButton) {
+            return;
+        }
+
+        var ctx = canvas.getContext("2d");
+        if (!ctx) {
+            stageMessageEl.textContent = "Canvas unsupported";
+            return;
+        }
+
+        var TILE = 32;
+        var ROWS = 20;
+        var COLS = 20;
+        var STEP_MS = 120;
+
+        var MAZE = [
+            "####################",
+            "#........##........#",
+            "#.####.#.##.#.####.#",
+            "#o#..#.#....#.#..#o#",
+            "#.####.######.####.#",
+            "#..................#",
+            "#.####.#.####.#.####",
+            "#......#..##..#....#",
+            "######.## ##.##.####",
+            "######.#    #.#.####",
+            "#......# ## #......#",
+            "#.####.# ## #.####.#",
+            "#o...#..........#o.#",
+            "###.#.##########.#.#",
+            "#...#....##....#...#",
+            "#.######.##.######.#",
+            "#..................#",
+            "#.####.######.####.#",
+            "#......##..##......#",
+            "####################"
+        ];
+
+        function runSelfChecks() {
+            if (MAZE.length !== ROWS) {
+                throw new Error("Pac-Man maze row size mismatch");
+            }
+            for (var i = 0; i < MAZE.length; i += 1) {
+                if (MAZE[i].length !== COLS) {
+                    throw new Error("Pac-Man maze column size mismatch at row " + i);
+                }
+            }
+            if (MAZE[1][1] === "#") {
+                throw new Error("Pac-Man start position must be walkable");
+            }
+        }
+
+        runSelfChecks();
+
+        var state = {
+            dots: [],
+            score: 0,
+            lives: 3,
+            running: true,
+            gameOver: false,
+            paused: false,
+            lastTick: 0
+        };
+
+        var player = {
+            row: 1,
+            col: 1,
+            dir: { x: 1, y: 0 },
+            pendingDir: { x: 1, y: 0 }
+        };
+
+        var ghost = {
+            row: 10,
+            col: 10,
+            dir: { x: 0, y: -1 }
+        };
+
+        function cloneDots() {
+            var dots = [];
+            for (var r = 0; r < ROWS; r += 1) {
+                dots[r] = [];
+                for (var c = 0; c < COLS; c += 1) {
+                    dots[r][c] = MAZE[r][c] === "." || MAZE[r][c] === "o";
+                }
+            }
+            return dots;
+        }
+
+        function isWall(row, col) {
+            if (row < 0 || row >= ROWS || col < 0 || col >= COLS) {
+                return true;
+            }
+            return MAZE[row][col] === "#";
+        }
+
+        function resetPositions() {
+            player.row = 1;
+            player.col = 1;
+            player.dir = { x: 1, y: 0 };
+            player.pendingDir = { x: 1, y: 0 };
+            ghost.row = 10;
+            ghost.col = 10;
+            ghost.dir = { x: 0, y: -1 };
+        }
+
+        function resetGame() {
+            state.dots = cloneDots();
+            state.score = 0;
+            state.lives = 3;
+            state.running = true;
+            state.gameOver = false;
+            state.paused = false;
+            state.lastTick = 0;
+            pauseButton.textContent = "Pause";
+            resetPositions();
+            syncHud();
+            draw();
+        }
+
+        function syncHud() {
+            scoreEl.textContent = String(state.score);
+            livesEl.textContent = String(state.lives);
+            if (state.gameOver) {
+                stageMessageEl.textContent = "Game Over";
+            } else if (!state.running) {
+                stageMessageEl.textContent = "Clear";
+            } else if (state.paused) {
+                stageMessageEl.textContent = "Paused";
+            } else {
+                stageMessageEl.textContent = "Play";
+            }
+        }
+
+        function setDirectionByName(name) {
+            if (name === "up") player.pendingDir = { x: 0, y: -1 };
+            if (name === "down") player.pendingDir = { x: 0, y: 1 };
+            if (name === "left") player.pendingDir = { x: -1, y: 0 };
+            if (name === "right") player.pendingDir = { x: 1, y: 0 };
+        }
+
+        function consumeDot() {
+            if (state.dots[player.row][player.col]) {
+                state.dots[player.row][player.col] = false;
+                state.score += MAZE[player.row][player.col] === "o" ? 50 : 10;
+            }
+        }
+
+        function canMove(row, col, dir) {
+            return !isWall(row + dir.y, col + dir.x);
+        }
+
+        function movePlayer() {
+            if (canMove(player.row, player.col, player.pendingDir)) {
+                player.dir = player.pendingDir;
+            }
+            if (canMove(player.row, player.col, player.dir)) {
+                player.row += player.dir.y;
+                player.col += player.dir.x;
+            }
+            consumeDot();
+        }
+
+        function chooseGhostDir() {
+            var dirs = [
+                { x: 0, y: -1 },
+                { x: 1, y: 0 },
+                { x: 0, y: 1 },
+                { x: -1, y: 0 }
+            ];
+            var options = [];
+            for (var i = 0; i < dirs.length; i += 1) {
+                var dir = dirs[i];
+                if (!canMove(ghost.row, ghost.col, dir)) {
+                    continue;
+                }
+                if (dir.x === -ghost.dir.x && dir.y === -ghost.dir.y) {
+                    continue;
+                }
+                options.push(dir);
+            }
+            if (!options.length) {
+                options.push({ x: -ghost.dir.x, y: -ghost.dir.y });
+            }
+            ghost.dir = options[Math.floor(Math.random() * options.length)];
+        }
+
+        function moveGhost() {
+            var nextBlocked = !canMove(ghost.row, ghost.col, ghost.dir);
+            var atJunction = false;
+            var pathCount = 0;
+            var allDirs = [
+                { x: 0, y: -1 },
+                { x: 1, y: 0 },
+                { x: 0, y: 1 },
+                { x: -1, y: 0 }
+            ];
+            for (var i = 0; i < allDirs.length; i += 1) {
+                if (canMove(ghost.row, ghost.col, allDirs[i])) {
+                    pathCount += 1;
+                }
+            }
+            atJunction = pathCount >= 3;
+
+            if (nextBlocked || atJunction) {
+                chooseGhostDir();
+            }
+
+            if (canMove(ghost.row, ghost.col, ghost.dir)) {
+                ghost.row += ghost.dir.y;
+                ghost.col += ghost.dir.x;
+            }
+        }
+
+        function handleCollision() {
+            if (player.row === ghost.row && player.col === ghost.col) {
+                state.lives -= 1;
+                if (state.lives <= 0) {
+                    state.gameOver = true;
+                    state.running = false;
+                }
+                resetPositions();
+            }
+        }
+
+        function checkClear() {
+            for (var r = 0; r < ROWS; r += 1) {
+                for (var c = 0; c < COLS; c += 1) {
+                    if (state.dots[r][c]) {
+                        return;
+                    }
+                }
+            }
+            state.running = false;
+        }
+
+        function tick() {
+            if (!state.running || state.paused) {
+                syncHud();
+                return;
+            }
+            movePlayer();
+            moveGhost();
+            handleCollision();
+            checkClear();
+            syncHud();
+        }
+
+        function drawCell(row, col, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(col * TILE, row * TILE, TILE, TILE);
+        }
+
+        function drawDot(row, col) {
+            var centerX = col * TILE + TILE / 2;
+            var centerY = row * TILE + TILE / 2;
+            ctx.beginPath();
+            ctx.fillStyle = MAZE[row][col] === "o" ? "#ffe89a" : "#ffd75c";
+            ctx.arc(centerX, centerY, MAZE[row][col] === "o" ? 6 : 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawPacman() {
+            var centerX = player.col * TILE + TILE / 2;
+            var centerY = player.row * TILE + TILE / 2;
+            var angle = Math.atan2(player.dir.y, player.dir.x);
+            var mouth = Math.PI / 4;
+            ctx.beginPath();
+            ctx.fillStyle = "#ffc400";
+            ctx.moveTo(centerX, centerY);
+            ctx.arc(centerX, centerY, TILE * 0.42, angle + mouth, angle - mouth + Math.PI * 2);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawGhost() {
+            var x = ghost.col * TILE;
+            var y = ghost.row * TILE;
+            var radius = TILE * 0.37;
+            var centerX = x + TILE / 2;
+            var centerY = y + TILE / 2;
+
+            ctx.fillStyle = "#ff6b6b";
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, Math.PI, 0);
+            ctx.lineTo(x + TILE * 0.87, y + TILE * 0.86);
+            ctx.lineTo(x + TILE * 0.72, y + TILE * 0.72);
+            ctx.lineTo(x + TILE * 0.5, y + TILE * 0.86);
+            ctx.lineTo(x + TILE * 0.28, y + TILE * 0.72);
+            ctx.lineTo(x + TILE * 0.13, y + TILE * 0.86);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.fillStyle = "#fff";
+            ctx.beginPath();
+            ctx.arc(centerX - 6, centerY - 2, 4, 0, Math.PI * 2);
+            ctx.arc(centerX + 6, centerY - 2, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = "#111";
+            ctx.beginPath();
+            ctx.arc(centerX - 6, centerY - 2, 2, 0, Math.PI * 2);
+            ctx.arc(centerX + 6, centerY - 2, 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawOverlay(text) {
+            ctx.fillStyle = "rgba(7, 12, 24, 0.65)";
+            ctx.fillRect(0, canvas.height / 2 - 40, canvas.width, 80);
+            ctx.fillStyle = "#f8fafc";
+            ctx.font = "700 32px Pretendard, Noto Sans KR, sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (var row = 0; row < ROWS; row += 1) {
+                for (var col = 0; col < COLS; col += 1) {
+                    if (MAZE[row][col] === "#") {
+                        drawCell(row, col, "rgba(62, 115, 245, 0.85)");
+                    }
+                    if (state.dots[row][col]) {
+                        drawDot(row, col);
+                    }
+                }
+            }
+            drawPacman();
+            drawGhost();
+
+            if (state.gameOver) {
+                drawOverlay("GAME OVER");
+            } else if (!state.running) {
+                drawOverlay("STAGE CLEAR");
+            } else if (state.paused) {
+                drawOverlay("PAUSED");
+            }
+        }
+
+        function onFrame(timestamp) {
+            if (!state.lastTick) {
+                state.lastTick = timestamp;
+            }
+            if (timestamp - state.lastTick >= STEP_MS) {
+                state.lastTick = timestamp;
+                tick();
+                draw();
+            }
+            window.requestAnimationFrame(onFrame);
+        }
+
+        document.addEventListener("keydown", function onKeyDown(event) {
+            var key = event.key.toLowerCase();
+            if (key === "arrowup" || key === "w") {
+                setDirectionByName("up");
+                event.preventDefault();
+            }
+            if (key === "arrowdown" || key === "s") {
+                setDirectionByName("down");
+                event.preventDefault();
+            }
+            if (key === "arrowleft" || key === "a") {
+                setDirectionByName("left");
+                event.preventDefault();
+            }
+            if (key === "arrowright" || key === "d") {
+                setDirectionByName("right");
+                event.preventDefault();
+            }
+            if (key === " " || key === "p") {
+                state.paused = !state.paused;
+                pauseButton.textContent = state.paused ? "Resume" : "Pause";
+                syncHud();
+                draw();
+                event.preventDefault();
+            }
+        });
+
+        var dpadButtons = document.querySelectorAll(".dpad [data-dir]");
+        for (var i = 0; i < dpadButtons.length; i += 1) {
+            dpadButtons[i].addEventListener("click", function onPadClick() {
+                setDirectionByName(this.getAttribute("data-dir"));
+            });
+        }
+
+        restartButton.addEventListener("click", resetGame);
+        pauseButton.addEventListener("click", function onPauseClick() {
+            state.paused = !state.paused;
+            pauseButton.textContent = state.paused ? "Resume" : "Pause";
+            syncHud();
+            draw();
+        });
+
+        resetGame();
+        window.requestAnimationFrame(onFrame);
+    })();
+</script>
+</body>
+</html>

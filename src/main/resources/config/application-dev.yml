@@ -87,6 +87,14 @@ spring:
       max-file-size: 50MB      # 업로드 1개 파일 최대 크기
       max-request-size: 200MB  # 요청 전체(여러 파일 합) 최대 크기
       file-size-threshold: 0   # 0이면 디스크로 바로 저장(메모리에 안 쌓음)      
+app:
+  status-page:
+    background-image-url: ${SERVICE_STATUS_BG_URL:}
+    free-background:
+      enabled: ${SERVICE_STATUS_FREE_BG_ENABLED:true}
+      image-url: ${SERVICE_STATUS_FREE_BG_IMAGE_URL:https://picsum.photos/1920/1080}
+      probe-timeout-ms: ${SERVICE_STATUS_FREE_BG_PROBE_TIMEOUT_MS:1500}
+      cache-ttl-seconds: ${SERVICE_STATUS_FREE_BG_CACHE_TTL_SECONDS:300}
 management:
   endpoints:
     web:
@@ -360,6 +368,7 @@ studio:
       permit-all:
         - /
         - /index.html
+        - /service-status-config.js
         - /api/auth/**
         - /api/users/*
         - /api/profile/*/avatar*
