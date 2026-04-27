@@ -88,15 +88,6 @@ spring:
       max-request-size: 200MB  # 요청 전체(여러 파일 합) 최대 크기
       file-size-threshold: 0   # 0이면 디스크로 바로 저장(메모리에 안 쌓음)      
   ai:
-    openai:
-      api-key: ${OPENAI_API_KEY:}
-      chat:
-        options:
-          model: gpt-5-mini
-          temperature: 1
-      embedding:
-        options:
-          model: text-embedding-3-small
     google:
       genai:
         chat:
@@ -278,13 +269,6 @@ studio:
           enabled: true
         google-embedding:
           task-type: RETRIEVAL_DOCUMENT
-      openai:
-        enabled: ${OPENAI_PROVIDER_ENABLED:false}
-        type: OPENAI
-        chat:
-          enabled: true
-        embedding:
-          enabled: true
   cloud:
     storage:
       web:
