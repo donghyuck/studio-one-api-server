@@ -7,9 +7,15 @@
 
 
 pluginManagement {
+    val springBootVersion: String by settings
+    val springDependencyManagementVersion: String by settings
     repositories {
         gradlePluginPortal()
         mavenCentral()
+    }
+    plugins {
+        id("org.springframework.boot") version springBootVersion
+        id("io.spring.dependency-management") version springDependencyManagementVersion
     }
 }
 dependencyResolutionManagement {
@@ -17,6 +23,7 @@ dependencyResolutionManagement {
     repositories {
         // 1) 오픈소스를 위한 중앙 저장소
         mavenCentral()
+        mavenLocal()
         //2) 사내 Nexus 저장소
         val allowInsecure = providers.gradleProperty("nexus.allowInsecure")
             .orNull
@@ -33,4 +40,21 @@ plugins {
     // Apply the foojay-resolver plugin to allow automatic download of JDKs
     id("org.gradle.toolchains.foojay-resolver-convention") version "0.9.0"
 }
-rootProject.name = "studio-one-api-server"
+rootProject.name = providers.gradleProperty("buildApplicationName").getOrElse("studio-one-api-server")
+
+val useStudioApiComposite = providers.gradleProperty("useStudioApiComposite")
+    .orNull
+    ?.toBoolean()
+    ?: false
+if (useStudioApiComposite) {
+    val studioApiDir = providers.gradleProperty("studioApiDir")
+        .orNull
+        ?.takeIf { it.isNotBlank() }
+        ?.let(::file)
+        ?: error("studioApiDir is required when useStudioApiComposite=true")
+    require(studioApiDir.isDirectory) {
+        "studioApiDir does not exist: ${studioApiDir.absolutePath}"
+    }
+    logger.lifecycle("Including studio-api composite build from ${studioApiDir.absolutePath}")
+    includeBuild(studioApiDir)
+}

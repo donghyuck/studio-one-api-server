@@ -32,7 +32,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.ExceptionHandlingConfigurer;
@@ -72,7 +72,7 @@ import studio.one.platform.util.LogUtils;
  */
 
 @Configuration
-@EnableGlobalMethodSecurity(prePostEnabled = true)
+@EnableMethodSecurity(prePostEnabled = true)
 @EnableConfigurationProperties(SecurityProperties.class)
 @RequiredArgsConstructor
 @Slf4j
@@ -121,7 +121,7 @@ public class SecurityFilterConfig {
         JwtProperties jwtProps = securityProperties.getJwt();
 
         HttpSecurity configured = http
-                .antMatcher("/api/**")
+                .securityMatcher("/api/**")
                 // .csrf(csrf -> csrf.ignoringAntMatchers(
                 //         buildCsrfIgnored(formLogin, logout, jwtProps).toArray(new String[0])))
                 .csrf(xcsrf-> xcsrf.disable()   )
@@ -129,13 +129,13 @@ public class SecurityFilterConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authz -> {
                     for (String pattern : jwtOpenPatterns(securityProperties)) {
-                        authz.antMatchers(pattern).permitAll();
+                        authz.requestMatchers(pattern).permitAll();
                     }
                     securityProperties.getPermit().getPermitAll().forEach(path -> {
-                        authz.antMatchers(path).permitAll();
+                        authz.requestMatchers(path).permitAll();
                     });
                     securityProperties.getPermit().getRole().forEach((role, paths) -> paths.forEach(path -> {
-                        authz.antMatchers(path).hasRole(role);
+                        authz.requestMatchers(path).hasRole(role);
                     }));
                     authz.anyRequest().authenticated();
                 })
@@ -170,24 +170,24 @@ public class SecurityFilterConfig {
         LogoutProperties logout = securityProperties.getLogout();
         JwtProperties jwtProps = securityProperties.getJwt();
         HttpSecurity configured = http
-                .antMatcher("/**")
-                .csrf(csrf -> csrf.ignoringAntMatchers(
+                .securityMatcher("/**")
+                .csrf(csrf -> csrf.ignoringRequestMatchers(
                         buildCsrfIgnored(formLogin, logout, jwtProps).toArray(new String[0])))
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(authz -> {
                     if (formLogin.isEnabled()) {
-                        authz.antMatchers(formLogin.getLoginPage()).permitAll();
-                        authz.antMatchers(formLogin.getLoginProcessingUrl()).permitAll();
+                        authz.requestMatchers(formLogin.getLoginPage()).permitAll();
+                        authz.requestMatchers(formLogin.getLoginProcessingUrl()).permitAll();
                     }
                     if (logout.isEnabled()) {
-                        authz.antMatchers(logout.getLogoutUrl()).permitAll();
+                        authz.requestMatchers(logout.getLogoutUrl()).permitAll();
                     }
                     securityProperties.getPermit().getPermitAll().forEach(path -> {
-                        authz.antMatchers(path).permitAll();
+                        authz.requestMatchers(path).permitAll();
                     });
                     securityProperties.getPermit().getRole().forEach((role, paths) -> paths.forEach(path -> {
-                        authz.antMatchers(path).hasRole(role);
+                        authz.requestMatchers(path).hasRole(role);
                     }));
                     authz.anyRequest().authenticated();
                 })

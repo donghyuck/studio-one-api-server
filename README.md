@@ -8,6 +8,7 @@
 - `buildGroup`: Maven groupId
 - `buildVersion`: 애플리케이션 버전
 - `javaVersion`: 사용 JDK 버전
+- 하위 호환 키도 지원: `buildApplicationGroup`, `buildApplicationVersion`, `sourceCompatibility`, `targetCompatibility`
 
 ### 라이브러리 버전
 - `studioOneVersion`
@@ -18,9 +19,14 @@
 - `apachePoiVersion`
 - `log4jdbcLog4j2Version`
 
+### Workspace management API
+- `/api/mgmt/workspaces` 계열 API는 `studio-platform-starter-workspace` 의존성과 `studio.features.workspace.enabled=true`, `studio.features.workspace.web.enabled=true` 설정이 필요합니다.
+- Flyway에는 `classpath:/schema/workspace/{db}` location이 포함되어야 `TB_PLATFORM_WORKSPACE`, `TB_PLATFORM_WORKSPACE_CLOSURE`, `TB_PLATFORM_WORKSPACE_MEMBER`가 생성됩니다.
+
 ### Nexus 저장소
 - `nexus.releasesUrl`: 사내 Nexus URL
 - `nexus.allowInsecure`: HTTPS 미사용 시 `true`
+- 로컬 `studio-api` checkout을 직접 연결해 검증하려면 `-PuseStudioApiComposite=true -PstudioApiDir=/path/to/studio-api`를 함께 전달합니다.
 
 ### 보안/암호화
 - `JASYPT_ENCRYPTOR_PASSWORD`: Jasypt 암호화 키

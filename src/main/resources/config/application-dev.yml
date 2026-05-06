@@ -23,7 +23,7 @@ spring:
   application:
     name: cufit
   flyway:
-    enabled: false
+    enabled: true
     baseline-on-migrate: true
     baseline-version: 0
     validate-on-migrate: true
@@ -37,6 +37,7 @@ spring:
       - classpath:/schema/user/postgres
       - classpath:/schema/security/postgres
       - classpath:/schema/security-acl/postgres
+      - classpath:/schema/workspace/postgres
       - classpath:/schema/ai/postgres
       - classpath:/schema/avatar/postgres
       - classpath:/schema/attachment/postgres
@@ -45,7 +46,7 @@ spring:
     out-of-order: true
   ### JPA Config ###
   jpa:
-    database-platform: org.hibernate.dialect.PostgreSQL10Dialect
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     show-sql: false
     properties:
       hibernate:
@@ -212,6 +213,12 @@ studio:
       enabled: true
     template:
       enabled: true  
+    workspace:
+      enabled: true
+      web:
+        enabled: true
+        public-base-path: /api/workspaces
+        mgmt-base-path: /api/mgmt/workspaces
     text:
       enabled: true          
     user:
