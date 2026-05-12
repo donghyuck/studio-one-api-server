@@ -1,85 +1,135 @@
 plugins {
-    id("org.springframework.boot") version "2.7.18"
-    id("io.spring.dependency-management") version "1.1.7" 
+    id("org.springframework.boot")
+    id("io.spring.dependency-management")
     war
     java
 }
-group = project.findProperty("buildGroup") as String
-version = project.findProperty("buildVersion") as String 
+
+fun prop(vararg keys: String, default: String? = null): String {
+    for (key in keys) {
+        val value = findProperty(key)?.toString()?.trim()
+        if (!value.isNullOrEmpty()) {
+            return value
+        }
+    }
+    return default ?: error("Missing Gradle property. Expected one of: ${keys.joinToString()}")
+}
+
+group = prop("buildGroup", "buildApplicationGroup")
+version = prop("buildVersion", "buildApplicationVersion")
+description = findProperty("buildApplicationName") as? String ?: project.name
 val profile = project.findProperty("profile") as String? ?: "dev"
 val isDev = profile == "dev"
 val packaging = (findProperty("packaging") as String?) ?: "jar"   
 val isWar = packaging.equals("war", ignoreCase = true)
 logger.lifecycle("📦 [PROFILE] = $profile (isDev=$isDev)")
-java { 
+val javaVersion = prop("javaVersion", "sourceCompatibility", "targetCompatibility", default = "17")
+val studioApiVersion = prop("studioOneVersion", default = "1.0.0")
+val apachePdfBoxVersion = prop("apachePdfBoxVersion", default = "2.0.30")
+val apachePoiVersion = prop("apachePoiVersion", default = "5.2.5")
+val jsoupVersion = prop("jsoupVersion", default = "1.21.2")
+val studioLocalCacheRoot = file("${System.getProperty("user.home")}/.gradle/caches/modules-2/files-2.1")
+val useStudioLocalCache = (findProperty("useStudioLocalCache") as String?)?.toBooleanStrictOrNull()
+    ?: false
+val studioLocalCacheJars = if (useStudioLocalCache) {
+    studioLocalCacheRoot
+        .walkTopDown()
+        .filter { it.isFile && it.extension == "jar" }
+        .filter { it.invariantSeparatorsPath.contains("/studio.one") }
+        .groupBy { it.name }
+        .map { (_, files) -> files.minByOrNull { it.absolutePath.length }!! }
+} else {
+    emptyList()
+}
+java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of((findProperty("javaVersion") as String).toInt()))
-    } 
+        languageVersion.set(JavaLanguageVersion.of(javaVersion.toInt()))
+    }
     withSourcesJar()
     withJavadocJar()
-}  
+}
+
 dependencies {
     if (isWar) {
-        providedRuntime("org.springframework.boot:spring-boot-starter-tomcat") 
+        providedRuntime("org.springframework.boot:spring-boot-starter-tomcat")
     } else {
         implementation("org.springframework.boot:spring-boot-starter-tomcat")
     }
-    // studio one platform starters
-    implementation("studio.one.starter:studio-platform-starter:${property("studioOneVersion")}")
-    implementation("studio.one.starter:studio-platform-starter-jasypt:${property("studioOneVersion")}")
-    implementation("studio.one.starter:studio-platform-starter-objecttype:${property("studioOneVersion")}")
-    implementation("studio.one.starter:studio-platform-starter-user:${property("studioOneVersion")}")
-    implementation("studio.one.starter:studio-platform-starter-security:${property("studioOneVersion")}")
-    implementation("studio.one.starter:studio-platform-starter-security-acl:${property("studioOneVersion")}")
-    implementation("studio.one.starter:studio-platform-starter-objectstorage:${property("studioOneVersion")}")
-    implementation("studio.one.starter:studio-platform-starter-objectstorage-aws:${property("studioOneVersion")}")
-    implementation("studio.one.starter:studio-platform-starter-ai:${property("studioOneVersion")}")
-    implementation("studio.one.starter:studio-platform-starter-realtime:${property("studioOneVersion")}")
-    // studio one platform applicaiton module & starters
-    implementation("studio.one.starter:studio-application-starter-avatar:${property("studioOneVersion")}")
-    implementation("studio.one.starter:studio-application-starter-attachment:${property("studioOneVersion")}") 
-    implementation("studio.one.starter:studio-application-starter-mail:${property("studioOneVersion")}") 
-    implementation("studio.one.starter:studio-application-starter-template:${property("studioOneVersion")}")         
-    implementation("studio.one.modules:content-embedding-pipeline:${property("studioOneVersion")}")
-    implementation("studio.one.starter:studio-application-starter-pages:${property("studioOneVersion")}")   
-    implementation("studio.one.starter:studio-application-starter-forums:${property("studioOneVersion")}")  
-    implementation("studio.one.modules:content-embedding-pipeline:${property("studioOneVersion")}")
-    implementation("studio.one.api:studio-platform-identity:${property("studioOneVersion")}")
-    implementation("studio.one.api:studio-platform-user-default:${property("studioOneVersion")}")
-    // srping starters 
-    implementation("org.springframework.boot:spring-boot-starter-validation") 
-    implementation("org.springframework.boot:spring-boot-starter-aop") 
+    if (useStudioLocalCache) {
+        logger.lifecycle("📦 [DEPENDENCIES] Using local studio.one Gradle cache fallback: $studioLocalCacheRoot")
+        implementation(files(studioLocalCacheJars))
+    } else {
+        // studio one platform starters
+        implementation("studio.one.starter:studio-platform-starter:$studioApiVersion")
+        implementation("studio.one.starter:studio-platform-starter-jasypt:$studioApiVersion")
+        implementation("studio.one.starter:studio-platform-starter-objecttype:$studioApiVersion")
+        implementation("studio.one.starter:studio-platform-starter-user:$studioApiVersion")
+        implementation("studio.one.starter:studio-platform-starter-security:$studioApiVersion")
+        implementation("studio.one.starter:studio-platform-starter-security-acl:$studioApiVersion")
+        implementation("studio.one.starter:studio-platform-starter-objectstorage:$studioApiVersion")
+        implementation("studio.one.starter:studio-platform-starter-objectstorage-aws:$studioApiVersion")
+        implementation("studio.one.starter:studio-platform-starter-ai:$studioApiVersion")
+        implementation("studio.one.starter:studio-platform-starter-ai-web:$studioApiVersion")
+        implementation("studio.one.starter:studio-platform-starter-chunking:$studioApiVersion")
+        implementation("studio.one.starter:studio-platform-starter-realtime:$studioApiVersion")
+        implementation("studio.one.starter:studio-platform-starter-workspace:$studioApiVersion")
+        implementation("studio.one.starter:studio-platform-thumbnail-starter:$studioApiVersion")
+        // studio one platform applicaiton module & starters
+        implementation("studio.one.starter:studio-application-starter-avatar:$studioApiVersion")
+        implementation("studio.one.starter:studio-application-starter-attachment:$studioApiVersion")
+        implementation("studio.one.starter:studio-application-starter-mail:$studioApiVersion")
+        implementation("studio.one.starter:studio-application-starter-template:$studioApiVersion")
+        implementation("studio.one.modules:content-embedding-pipeline:$studioApiVersion")
+        implementation("studio.one.api:studio-platform-identity:$studioApiVersion")
+        implementation("studio.one.api:studio-platform-user-default:$studioApiVersion")
+    }
+    // spring starters
+    implementation("org.springframework.boot:spring-boot-starter-validation")
+    implementation("org.springframework.boot:spring-boot-starter-aop")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    implementation("org.springframework.boot:spring-boot-starter-security") 
+    implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-cache")
     implementation("com.github.ben-manes.caffeine:caffeine")
     implementation("org.springframework.boot:spring-boot-starter-mail")
     implementation("org.springframework.boot:spring-boot-starter-websocket")
+    compileOnly("javax.servlet:javax.servlet-api:4.0.1")
+
+    implementation("org.springframework.ai:spring-ai-starter-model-openai")
+    implementation("org.springframework.ai:spring-ai-google-genai")
+    implementation("org.springframework.ai:spring-ai-google-genai-embedding")
 
     // spring mamagement starter
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     // database driver
     runtimeOnly("org.postgresql:postgresql:${project.findProperty("postgresqlVersion")}")    
     implementation("org.bgee.log4jdbc-log4j2:log4jdbc-log4j2-jdbc4.1:${project.findProperty("log4jdbcLog4j2Version")}")
-    implementation("org.flywaydb:flyway-core")
+    implementation("org.flywaydb:flyway-core:${project.findProperty("flywayVersion")}")
+    implementation("org.flywaydb:flyway-database-postgresql:${project.findProperty("flywayVersion")}")
     //test
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     //lombok
     val lombokVersion: String = project.findProperty("lombokVersion") as String? ?: "1.18.30"
     compileOnly("org.projectlombok:lombok:$lombokVersion")
     annotationProcessor("org.projectlombok:lombok:$lombokVersion")
-	testCompileOnly("org.projectlombok:lombok:$lombokVersion")
+    testCompileOnly("org.projectlombok:lombok:$lombokVersion")
     testAnnotationProcessor("org.projectlombok:lombok:$lombokVersion")
     //mapstruct 사용의 경우 의존성 추가.
-    
+
     // implementation ("org.mapstruct:mapstruct:${project.findProperty("mapstructVersion")}")   
     // annotationProcessor ("org.mapstruct:mapstruct-processor:${project.findProperty("mapstructVersion")}")   
-    // annotationProcessor ("org.projectlombok:lombok-mapstruct-binding:0.2.0")    
-    // AI TEXT Extraction
-    implementation("org.apache.pdfbox:pdfbox:${property("apachePdfBoxVersion")}")
-    implementation("org.apache.poi:poi-ooxml:${property("apachePoiVersion")}")
-    implementation("org.apache.poi:poi:${property("apachePoiVersion")}")
+    // annotationProcessor ("org.projectlombok:lombok-mapstruct-binding:0.2.0")
+
+    // Document processing dependencies shared by textract and thumbnail.
+    // studio-platform-textract declares these as compileOnly; the application supplies runtime libraries.
+    // studio-platform-thumbnail uses PDFBox for PDF rasterizing, POI for PPTX,
+    // and textract output for DOCX/HWP/HWPX preview thumbnails.
+    implementation("org.apache.pdfbox:pdfbox:$apachePdfBoxVersion")
+    implementation("org.apache.poi:poi-ooxml:$apachePoiVersion")
+    implementation("org.apache.poi:poi:$apachePoiVersion")
+    implementation("org.jsoup:jsoup:$jsoupVersion")
+    implementation("net.sourceforge.tess4j:tess4j:${property("tesseractVersion")}")
+
 }
 tasks.test { useJUnitPlatform() }
 tasks.getByName<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
@@ -110,6 +160,14 @@ tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
         providers.gradleProperty("s3.accessKey").orNull?.let { systemProperty("S3_ACCESS_KEY", it) }
         providers.gradleProperty("s3.secretKey").orNull?.let { systemProperty("S3_SECRET_KEY", it) } 
         // ai 관련 설정
-        providers.gradleProperty("gemini.api.key").orNull?.let { systemProperty("GEMINI_API_KEY", it) }
+        providers.gradleProperty("gemini.api.key").orNull?.let {
+            systemProperty("GEMINI_API_KEY", it)
+        }
+        providers.gradleProperty("openai.api.key").orNull?.let {
+            systemProperty("OPENAI_API_KEY", it)
+        }
+        providers.gradleProperty("openai.provider.enabled").orNull?.let {
+            systemProperty("OPENAI_PROVIDER_ENABLED", it)
+        }
     }  
 }

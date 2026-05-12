@@ -7,7 +7,7 @@ logging:
     org: info
     org.springframework.boot.context.properties: DEBUG
     org.springframework.boot.context.properties.bind: DEBUG
-    org.springframework.boot.autoconfigure: DEBUG
+    #org.springframework.boot.autoconfigure: DEBUG
     org.springframework.security: TRACE
     org.springframework.security.authentication: TRACE
     org.springframework.security.authentication.dao: TRACE
@@ -17,13 +17,13 @@ logging:
     dev.langchain4j: DEBUG
     com.zaxxer.hikari: ERROR
     log4jdbc.log4j2: DEBUG
-    org.springframework.security.access.intercept.aopalliance.MethodSecurityInterceptor: DEBUG
-    org.springframework.security.access.expression.method: DEBUG
+    #org.springframework.security.access.intercept.aopalliance.MethodSecurityInterceptor: DEBUG
+    #org.springframework.security.access.expression.method: DEBUG
 spring:
   application:
-    name: cufit
+    name: studio-api
   flyway:
-    enabled: false
+    enabled: true
     baseline-on-migrate: true
     baseline-version: 0
     validate-on-migrate: true
@@ -31,12 +31,13 @@ spring:
     repeatable-sql-migration-prefix: R
     sql-migration-separator: __
     sql-migration-suffixes: .sql
-    locations: 
+    locations:
       - classpath:/schema/data/postgres
       - classpath:/schema/objecttype/postgres
       - classpath:/schema/user/postgres
       - classpath:/schema/security/postgres
       - classpath:/schema/security-acl/postgres
+      - classpath:/schema/workspace/postgres
       - classpath:/schema/ai/postgres
       - classpath:/schema/avatar/postgres
       - classpath:/schema/attachment/postgres
@@ -45,7 +46,7 @@ spring:
     out-of-order: true
   ### JPA Config ###
   jpa:
-    database-platform: org.hibernate.dialect.PostgreSQL10Dialect
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     show-sql: false
     properties:
       hibernate:
@@ -60,7 +61,7 @@ spring:
   ### DATASOURCE Config ###
   datasource:
     primary:
-      url: jdbc:log4jdbc:postgresql://localhost:5432/cufit_db
+      url: jdbc:log4jdbc:postgresql://localhost:5432/studio_db
       driver-class-name: net.sf.log4jdbc.sql.jdbcapi.DriverSpy
       username: studioapi
       password: studioapi
@@ -81,12 +82,12 @@ spring:
     properties:
       mail.debug: true
       mail.smtp.auth: true
-      mail.smtp.starttls.enable: true 
+      mail.smtp.starttls.enable: true
   servlet:
     multipart:
-      max-file-size: 50MB      # 업로드 1개 파일 최대 크기
-      max-request-size: 200MB  # 요청 전체(여러 파일 합) 최대 크기
-      file-size-threshold: 0   # 0이면 디스크로 바로 저장(메모리에 안 쌓음)      
+      max-file-size: 50MB # 업로드 1개 파일 최대 크기
+      max-request-size: 200MB # 요청 전체(여러 파일 합) 최대 크기
+      file-size-threshold: 0 # 0이면 디스크로 바로 저장(메모리에 안 쌓음)
   ai:
     google:
       genai:
@@ -112,7 +113,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: mappings # 또는 "*"      
+        include: mappings # 또는 "*"
 studio:
   banner-mode: off
   env:
@@ -128,19 +129,19 @@ studio:
     use-code-as-default-message: true
     fallback-to-system-locale: false
   persistence:
-    type: jdbc
+    type: jpa
   features:
     application-properties:
       enabled: true
+    ai:
+      enabled: true
     attachment:
-      enabled: true 
-      storage:
-        baseDir: /Users/donghyuck.son/Documents/file
+      enabled: true
       web:
         enabled: true
         mgmt-base-path: /api/mgmt/files
     avatar-image:
-      enabled: true 
+      enabled: true
       web:
         user-base: /api/mgmt/users
         public-base: /api/profile
@@ -150,16 +151,15 @@ studio:
         cleanup:
           enabled: true
           cron: 0 0 3 * * *
-          ttlDays: 30        
+          ttlDays: 30
     document:
-      enabled: true 
+      enabled: true
       web:
         enabled: true
         base-path: /api/mgmt/documents
     forums:
       enabled: true
-      admin-role:
-        ROLE_ADMIN,ADMIN 
+      admin-role: ROLE_ADMIN,ADMIN
       attachments:
         object-type: 1
       cache:
@@ -168,13 +168,13 @@ studio:
         detail-ttl: 5m
         list-max-size: 10000
         detail-max-size: 50000
-        record-stats: true        
+        record-stats: true
       web:
         enabled: true
-        base-path: /api/forums    
+        base-path: /api/forums
         mgmt-base-path: /api/mgmt/forums
     jasypt:
-      enabled: true
+      enabled: false
       encryptor:
         bean: components:foundation:jasypt-string-encryptor
         password: ${JASYPT_ENCRYPTOR_PASSWORD} # 환경 변수로 암호화 비밀번호 설정
@@ -192,17 +192,6 @@ studio:
         token-value: local-dev-token
     mail:
       enabled: true
-      imap:
-        host: ${MAIL_HOST:localhost}
-        port: 993
-        username: ${MAIL_USER:}
-        password: ${MAIL_PASSWORD:}
-        protocol: imaps # 기본 imaps
-        folder: helpdesk #INBOX
-        max-messages: 500
-        concurrency: 4 # 동시 처리 스레드 수
-        max-attachment-bytes: 10485760 # 10MB 초과 첨부는 저장하지 않음
-        max-body-bytes: 1048576 # 본문은 길이 제한으로 자름
       web:
         enabled: true
         base-path: /api/mgmt/mail
@@ -211,19 +200,90 @@ studio:
     realtime:
       enabled: true
     template:
-      enabled: true  
-    text:
-      enabled: true          
+      enabled: true
+    workspace:
+      enabled: true
+      company-required: true
+      company-scope-enforced: true
+      web:
+        enabled: true
+        public-base-path: /api/workspaces
+        mgmt-base-path: /api/mgmt/workspaces
+    textract:
+      enabled: true
+    thumbnail:
+      enabled: true
     user:
-      enabled: true 
+      enabled: true
       web:
         enabled: true
     objecttype:
       enabled: true
+      mode: db
       web:
         enabled: true
+        base-path: /api/object-types
+        mgmt-base-path: /api/mgmt/object-types
+  attachment:
+    storage:
+      base-dir: var/lib/app/files
+    download-url:
+      public-base-url: http://localhost:8080
+      signing-secret: ${ATTACHMENT_DOWNLOAD_URL_SIGNING_SECRET}
+    thumbnail:
+      enabled: true
+      base-dir: var/lib/app/files/thumbnails
+      ensure-dirs: true
+  textract:
+    max-extract-size: 50M
+    tesseract:
+      datapath: /opt/homebrew/share/tessdata
+      language: kor+eng
+    pdf:
+      engine: pymupdf4llm
+      fallback-enabled: true
+      engines:
+        pymupdf4llm:
+          enabled: true
+          endpoint: http://localhost:8000/extract/pdf
+          timeout: 60s
+          max-file-size: 50MB
+  thumbnail:
+    default-size: 128
+    default-format: png
+    min-size: 16
+    max-size: 512
+    max-source-size: 50M
+    max-source-pixels: 25000000
+    renderers:
+      image:
+        enabled: true
+      pdf:
+        enabled: true
+        page: 0
+      pptx:
+        enabled: true
+        slide: 0
+      docx:
+        enabled: true
+      hwp:
+        enabled: true
+      hwpx:
+        enabled: true
+  mail:
+    imap:
+      host: ${MAIL_HOST:localhost}
+      port: 993
+      username: ${MAIL_USER:}
+      password: ${MAIL_PASSWORD:}
+      protocol: imaps # 기본 imaps
+      folder: helpdesk #INBOX
+      max-messages: 500
+      concurrency: 4 # 동시 처리 스레드 수
+      max-attachment-bytes: 10485760 # 10MB 초과 첨부는 저장하지 않음
+      max-body-bytes: 1048576 # 본문은 길이 제한으로 자름
   objecttype:
-    mode: db # yaml | db     
+    mode: db # yaml | db
     registry:
       cache:
         enabled: true
@@ -233,23 +293,54 @@ studio:
       cache:
         enabled: true
         ttl-seconds: 300
-        max-size: 1000    
-  ai:
+        max-size: 1000
+  chunking:
     enabled: true
+    strategy: recursive
+    max-size: 800
+    overlap: 100
+  ai:
+    routing:
+      default-chat-provider: google-ai-gemini
+      default-embedding-provider: google-ai-gemini
     prompts:
       query-rewrite: "classpath:prompts/query-rewrite.v1.prompt"
       summarization: "classpath:prompts/summarization.v1.prompt"
       keyword-extraction: "classpath:prompts/keyword-extraction.v1.prompt"
       rag-cleaner: "classpath:prompts/rag-cleaner.v1.prompt"
-    pipeline:
-      chunk-size: 350
-      chunk-overlap: 50
-    endpoints:
-      enabled: true
-    default-provider: google-ai-gemini
-    default-chat-provider: google-ai-gemini
-    default-embedding-provider: google-ai-gemini
     rag:
+      jobs:
+        repository: jdbc
+      cache:
+        maximum-size: 1000
+        ttl: 10m
+      retry:
+        max-attempts: 3
+        wait-duration: 2s
+      retrieval:
+        vector-weight: 0.7
+        lexical-weight: 0.3
+        min-relevance-score: 0.15
+        keyword-fallback-enabled: true
+        semantic-fallback-enabled: true
+        query-expansion:
+          enabled: true
+          max-keywords: 5
+      object-scope:
+        default-list-limit: 20
+        max-list-limit: 100
+      cleaner:
+        enabled: false
+        prompt: rag-cleaner
+        max-input-chars: 20000
+        fail-open: true
+      diagnostics:
+        enabled: true
+        log-results: true
+        max-snippet-chars: 160
+      keywords:
+        scope: document
+        max-input-chars: 4000
       default-embedding-profile: gemini-768
       embedding-profiles:
         gemini-768:
@@ -257,14 +348,20 @@ studio:
           model: gemini-embedding-001
           dimension: 768
           supported-input-types: [TEXT, TABLE_TEXT, IMAGE_CAPTION, OCR_TEXT]
+    endpoints:
+      enabled: true
+      chat:
+        memory:
+          enabled: true
+          max-messages: 20
+          max-conversations: 1000
+          ttl: 30m
     providers:
       google-ai-gemini:
         enabled: true
         type: GOOGLE_AI_GEMINI
-        api-key: ${GEMINI_API_KEY}
         chat:
           enabled: true
-          model: gemini-2.5-flash
         embedding:
           enabled: true
         google-embedding:
@@ -303,18 +400,18 @@ studio:
   security:
     enabled: true
     acl:
-      enabled: true   
+      enabled: true
       cache-name: aclCache
       admin-role: ROLE_ADMIN
       metrics-enabled: true
       audit-enabled: true
-      defaults: 
+      defaults:
         enabled: true
       sync:
         enabled: true
-      web: 
-        enabled: true 
-        base-path: /api/security/acl    
+      web:
+        enabled: true
+        base-path: /api/mgmt/acl
     auth:
       lock:
         enabled: true
@@ -389,6 +486,7 @@ studio:
         - /api/auth/**
         - /api/users/*
         - /api/profile/*/avatar*
+        - /api/attachments/signed-download
         - /api/forums/**
         - /api/forums/*/topics/*/posts/*/attachments*
         - /actuator/**
