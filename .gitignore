@@ -16,3 +16,8 @@ bin/
 
 # Ignore Gradle build output directory
 build
+.env.local
+.omx/
+var/
+.logs/
+.claude/

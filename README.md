@@ -8,6 +8,7 @@
 - `buildGroup`: Maven groupId
 - `buildVersion`: 애플리케이션 버전
 - `javaVersion`: 사용 JDK 버전
+- 하위 호환 키도 지원: `buildApplicationGroup`, `buildApplicationVersion`, `sourceCompatibility`, `targetCompatibility`
 
 ### 라이브러리 버전
 - `studioOneVersion`
@@ -18,9 +19,31 @@
 - `apachePoiVersion`
 - `log4jdbcLog4j2Version`
 
+### studio.one 의존성 해석
+- 기본값으로 로컬 Gradle 캐시(`~/.gradle/caches/modules-2/files-2.1`)의 `studio.one` JAR을 폴백으로 사용합니다.
+- 사내 Nexus만 강제로 사용하려면 `useStudioLocalCache=false`를 설정하세요.
+
 ### Nexus 저장소
-- `nexus.releasesUrl`: 사내 Nexus URL
+- `nexus.releasesUrl`: 기본 Nexus URL
 - `nexus.allowInsecure`: HTTPS 미사용 시 `true`
+- `scripts/run-dev.sh`는 `.env.local`을 읽고 Gradle을 실행합니다.
+- `.env.local`에 `NEXUS_RELEASES_URL`, `NEXUS_ALLOW_INSECURE`, `NEXUS_USERNAME`, `NEXUS_PASSWORD`를 두면 Nexus 설정을 쉽게 바꿀 수 있습니다.
+- `.env.local`에 `OPENAI_API_KEY`가 없으면 `run-dev.sh`가 OpenAI 관련 Spring AI 자동설정을 제외하고 실행합니다.
+- `.env.local`에 `OPENAI_API_KEY`가 있으면 `SPRING_AI_OPENAI_API_KEY`로 연결해서 OpenAI 모델 자동설정을 사용합니다.
+- `.env.local`에 `OPENAI_API_KEY`가 있으면 `OPENAI_PROVIDER_ENABLED=true`를 기본값으로 설정해 OpenAI provider도 함께 활성화합니다.
+- `.env.local`에 `GEMINI_API_KEY`가 있으면 `application-dev.yml`에서 Gemini chat/embedding 설정에 공통으로 사용합니다.
+- `studio.ai.*`는 provider 선택/활성화와 RAG orchestration을 담당하고, 실제 Gemini/OpenAI/Ollama SDK 옵션은
+  `spring.ai.*`가 기준입니다. 예를 들어 Gemini embedding은
+  `spring.ai.google.genai.embedding.text.options.model=gemini-embedding-001`과
+  `spring.ai.google.genai.embedding.text.options.dimensions=768`을 사용합니다.
+
+### RAG chunking
+- `studio-platform-starter-chunking`이 있으면 RAG 인덱싱은 `studio.chunking.*` 설정을 우선 사용합니다.
+- 기존 `studio.ai.pipeline.chunk-size`, `studio.ai.pipeline.chunk-overlap`은 chunking starter가 없을 때의 fallback 설정입니다.
+
+### Workspace management API
+- `/api/mgmt/workspaces` 계열 API는 `studio-platform-starter-workspace` 의존성과 `studio.features.workspace.enabled=true`, `studio.features.workspace.web.enabled=true` 설정이 필요합니다.
+- Flyway에는 `classpath:/schema/workspace/{db}` location이 포함되어야 `TB_PLATFORM_WORKSPACE`, `TB_PLATFORM_WORKSPACE_CLOSURE`, `TB_PLATFORM_WORKSPACE_MEMBER`가 생성됩니다.
 
 ### 보안/암호화
 - `JASYPT_ENCRYPTOR_PASSWORD`: Jasypt 암호화 키
@@ -55,6 +78,25 @@
 #### 개발 환경 (기본값: dev 프로파일)
 ```bash
 ./gradlew bootRun
+```
+
+#### `.env.local`을 읽어서 실행
+```bash
+./scripts/run-dev.sh
+```
+
+#### 프로파일 지정
+```bash
+./scripts/run-dev.sh local
+```
+
+#### 예시 `.env.local`
+```bash
+NEXUS_RELEASES_URL=http://localhost:8081/repository/maven-releases/
+NEXUS_ALLOW_INSECURE=true
+NEXUS_USERNAME=...
+NEXUS_PASSWORD=...
+OPENAI_API_KEY=
 ```
 
 #### 로컬 프로파일
