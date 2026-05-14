@@ -46,6 +46,29 @@ fi
 : "${NEXUS_RELEASES_URL:=http://localhost:8081/repository/maven-releases/}"
 : "${NEXUS_ALLOW_INSECURE:=true}"
 
+is_port_in_use() {
+  local port="$1"
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1
+    return $?
+  fi
+  return 1
+}
+
+if [[ -z "${SERVER_PORT:-}" ]]; then
+  SERVER_PORT=8080
+  if is_port_in_use "$SERVER_PORT"; then
+    for candidate in 8082 8083 8084 8085; do
+      if ! is_port_in_use "$candidate"; then
+        SERVER_PORT="$candidate"
+        echo "WARN: port 8080 is already in use; using SERVER_PORT=$SERVER_PORT"
+        break
+      fi
+    done
+  fi
+  export SERVER_PORT
+fi
+
 gradle_args=(
   "bootRun"
   "-Pprofile=${profile}"

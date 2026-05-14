@@ -24,8 +24,6 @@ package com.podosoftware.cufit.web.config;
 import java.util.ArrayList;
 import java.util.List;
 
-import jakarta.servlet.DispatcherType;
-
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -34,14 +32,16 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.ExceptionHandlingConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.web.cors.CorsConfigurationSource;
 
 import lombok.RequiredArgsConstructor;
@@ -74,7 +74,9 @@ import studio.one.platform.util.LogUtils;
  */
 
 @Configuration
-@EnableMethodSecurity(prePostEnabled = true)
+@ConditionalOnProperty(prefix = PropertyKeys.Security.PREFIX, name = "enabled", havingValue = "true")
+@EnableWebSecurity
+@EnableGlobalMethodSecurity(prePostEnabled = true)
 @EnableConfigurationProperties(SecurityProperties.class)
 @RequiredArgsConstructor
 @Slf4j
@@ -123,30 +125,31 @@ public class SecurityFilterConfig {
         JwtProperties jwtProps = securityProperties.getJwt();
 
         HttpSecurity configured = http
-                .securityMatcher("/api/**")
-                // .csrf(csrf -> csrf.ignoringAntMatchers(
-                //         buildCsrfIgnored(formLogin, logout, jwtProps).toArray(new String[0])))
-                .csrf(xcsrf-> xcsrf.disable()   )
+                .requestMatcher(new OrRequestMatcher(
+                        new AntPathRequestMatcher("/api/**"),
+                        new AntPathRequestMatcher("/data/**"),
+                        new AntPathRequestMatcher("/download/**"),
+                        new AntPathRequestMatcher("/streaming/**")))
+                .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(authz -> {
-                    authz.dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll();
+                .authorizeRequests(authz -> {
                     for (String pattern : jwtOpenPatterns(securityProperties)) {
-                        authz.requestMatchers(pattern).permitAll();
+                        authz.antMatchers(pattern).permitAll();
                     }
                     securityProperties.getPermit().getPermitAll().forEach(path -> {
-                        authz.requestMatchers(path).permitAll();
+                        authz.antMatchers(path).permitAll();
                     });
                     securityProperties.getPermit().getRole().forEach((role, paths) -> paths.forEach(path -> {
-                        authz.requestMatchers(path).hasRole(role);
+                        authz.antMatchers(path).hasRole(role);
                     }));
                     authz.anyRequest().authenticated();
                 })
                 .exceptionHandling(this::configureExceptionHandling)
                 .authenticationManager(authenticationManager);
 
-        configured.formLogin(AbstractHttpConfigurer::disable);
-        configured.logout(AbstractHttpConfigurer::disable);
+        configured.formLogin(form -> form.disable());
+        configured.logout(logoutConfig -> logoutConfig.disable());
         if (provider != null) {
             log.debug("JwtAuthenticationFilter is being added to the filter chain.");
             JwtAuthenticationFilter jwtFilter = new JwtAuthenticationFilter(
@@ -173,24 +176,24 @@ public class SecurityFilterConfig {
         LogoutProperties logout = securityProperties.getLogout();
         JwtProperties jwtProps = securityProperties.getJwt();
         HttpSecurity configured = http
-                .securityMatcher("/**")
-                .csrf(csrf -> csrf.ignoringRequestMatchers(
+                .antMatcher("/**")
+                .csrf(csrf -> csrf.ignoringAntMatchers(
                         buildCsrfIgnored(formLogin, logout, jwtProps).toArray(new String[0])))
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
-                .authorizeHttpRequests(authz -> {
+                .authorizeRequests(authz -> {
                     if (formLogin.isEnabled()) {
-                        authz.requestMatchers(formLogin.getLoginPage()).permitAll();
-                        authz.requestMatchers(formLogin.getLoginProcessingUrl()).permitAll();
+                        authz.antMatchers(formLogin.getLoginPage()).permitAll();
+                        authz.antMatchers(formLogin.getLoginProcessingUrl()).permitAll();
                     }
                     if (logout.isEnabled()) {
-                        authz.requestMatchers(logout.getLogoutUrl()).permitAll();
+                        authz.antMatchers(logout.getLogoutUrl()).permitAll();
                     }
                     securityProperties.getPermit().getPermitAll().forEach(path -> {
-                        authz.requestMatchers(path).permitAll();
+                        authz.antMatchers(path).permitAll();
                     });
                     securityProperties.getPermit().getRole().forEach((role, paths) -> paths.forEach(path -> {
-                        authz.requestMatchers(path).hasRole(role);
+                        authz.antMatchers(path).hasRole(role);
                     }));
                     authz.anyRequest().authenticated();
                 })

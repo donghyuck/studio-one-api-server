@@ -29,6 +29,36 @@ val apachePdfBoxVersion = prop("apachePdfBoxVersion", default = "2.0.30")
 val apachePoiVersion = prop("apachePoiVersion", default = "5.2.5")
 val jsoupVersion = prop("jsoupVersion", default = "1.21.2")
 val studioLocalCacheRoot = file("${System.getProperty("user.home")}/.gradle/caches/modules-2/files-2.1")
+val studioLocalCacheArtifacts = setOf(
+    "studio-platform",
+    "studio-platform-autoconfigure",
+    "studio-platform-data",
+    "studio-platform-objecttype",
+    "studio-platform-user",
+    "studio-platform-user-default",
+    "studio-platform-security",
+    "studio-platform-security-acl",
+    "studio-platform-realtime",
+    "studio-platform-ai",
+    "studio-platform-identity",
+    "studio-platform-starter",
+    "studio-platform-starter-jasypt",
+    "studio-platform-starter-objecttype",
+    "studio-platform-starter-user",
+    "studio-platform-starter-security",
+    "studio-platform-starter-security-acl",
+    "studio-platform-starter-ai",
+    "studio-platform-starter-realtime",
+    "avatar-service",
+    "attachment-service",
+    "mail-service",
+    "template-service",
+    "content-embedding-pipeline",
+    "studio-application-starter-avatar",
+    "studio-application-starter-attachment",
+    "studio-application-starter-mail",
+    "studio-application-starter-template"
+)
 val useStudioLocalCache = (findProperty("useStudioLocalCache") as String?)?.toBooleanStrictOrNull()
     ?: false
 val studioLocalCacheJars = if (useStudioLocalCache) {
@@ -36,6 +66,13 @@ val studioLocalCacheJars = if (useStudioLocalCache) {
         .walkTopDown()
         .filter { it.isFile && it.extension == "jar" }
         .filter { it.invariantSeparatorsPath.contains("/studio.one") }
+        .filter { it.invariantSeparatorsPath.contains("/$studioApiVersion/") }
+        .filter { file ->
+            studioLocalCacheArtifacts.any { artifact ->
+                file.name == "$artifact-$studioApiVersion.jar" ||
+                    file.name == "$artifact-$studioApiVersion-plain.jar"
+            }
+        }
         .groupBy { it.name }
         .map { (_, files) -> files.minByOrNull { it.absolutePath.length }!! }
 } else {
@@ -45,8 +82,14 @@ java {
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(javaVersion.toInt()))
     }
+    sourceCompatibility = JavaVersion.toVersion(javaVersion)
+    targetCompatibility = JavaVersion.toVersion(javaVersion)
     withSourcesJar()
     withJavadocJar()
+}
+
+tasks.withType<JavaCompile>().configureEach {
+    options.release.set(javaVersion.toInt())
 }
 
 dependencies {
@@ -89,15 +132,13 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("org.springframework.security:spring-security-acl")
     implementation("org.springframework.boot:spring-boot-starter-cache")
     implementation("com.github.ben-manes.caffeine:caffeine")
     implementation("org.springframework.boot:spring-boot-starter-mail")
     implementation("org.springframework.boot:spring-boot-starter-websocket")
-    compileOnly("javax.servlet:javax.servlet-api:4.0.1")
-
-    implementation("org.springframework.ai:spring-ai-starter-model-openai")
-    implementation("org.springframework.ai:spring-ai-google-genai")
-    implementation("org.springframework.ai:spring-ai-google-genai-embedding")
+    implementation("javax.servlet:javax.servlet-api:4.0.1")
+    implementation("org.apache.commons:commons-lang3")
 
     // spring mamagement starter
     implementation("org.springframework.boot:spring-boot-starter-actuator")
@@ -105,7 +146,6 @@ dependencies {
     runtimeOnly("org.postgresql:postgresql:${project.findProperty("postgresqlVersion")}")    
     implementation("org.bgee.log4jdbc-log4j2:log4jdbc-log4j2-jdbc4.1:${project.findProperty("log4jdbcLog4j2Version")}")
     implementation("org.flywaydb:flyway-core:${project.findProperty("flywayVersion")}")
-    implementation("org.flywaydb:flyway-database-postgresql:${project.findProperty("flywayVersion")}")
     //test
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     //lombok
