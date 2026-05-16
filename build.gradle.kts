@@ -71,6 +71,7 @@ dependencies {
         implementation("studio.one.starter:studio-platform-starter-ai:$studioApiVersion")
         implementation("studio.one.starter:studio-platform-starter-ai-web:$studioApiVersion")
         implementation("studio.one.starter:studio-platform-starter-chunking:$studioApiVersion")
+        implementation("studio.one.starter:studio-platform-starter-skillgraph:$studioApiVersion")
         implementation("studio.one.starter:studio-platform-starter-realtime:$studioApiVersion")
         implementation("studio.one.starter:studio-platform-starter-workspace:$studioApiVersion")
         implementation("studio.one.starter:studio-platform-thumbnail-starter:$studioApiVersion")
