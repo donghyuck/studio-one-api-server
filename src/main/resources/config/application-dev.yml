@@ -39,6 +39,7 @@ spring:
       - classpath:/schema/security-acl/postgres
       - classpath:/schema/workspace/postgres
       - classpath:/schema/ai/postgres
+      - classpath:/schema/skillgraph/postgres
       - classpath:/schema/avatar/postgres
       - classpath:/schema/attachment/postgres
       - classpath:/schema/template/postgres
@@ -224,6 +225,10 @@ studio:
         enabled: true
         base-path: /api/object-types
         mgmt-base-path: /api/mgmt/object-types
+    skillgraph:
+      enabled: true
+      web:
+        enabled: true
   attachment:
     storage:
       base-dir: var/lib/app/files
@@ -294,6 +299,8 @@ studio:
         enabled: true
         ttl-seconds: 300
         max-size: 1000
+  skillgraph:
+    persistence: jdbc
   chunking:
     enabled: true
     strategy: recursive
@@ -407,6 +414,14 @@ studio:
       audit-enabled: true
       defaults:
         enabled: true
+        policies:
+          - domain: features
+            component: skillgraph
+            roles:
+              - role: ROLE_ADMIN
+                actions: [READ, WRITE, ADMIN]
+              - role: ROLE_DEVELOPER
+                actions: [READ]
       sync:
         enabled: true
       web:
