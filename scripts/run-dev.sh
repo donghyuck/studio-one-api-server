@@ -45,6 +45,12 @@ fi
 
 : "${NEXUS_RELEASES_URL:=http://localhost:8081/repository/maven-releases/}"
 : "${NEXUS_ALLOW_INSECURE:=true}"
+: "${STUDIO_DEV_JAVA_OPTS:=-Xmx2g}"
+
+if [[ -n "${STUDIO_DEV_JAVA_OPTS}" ]]; then
+  export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:+${JAVA_TOOL_OPTIONS} }${STUDIO_DEV_JAVA_OPTS}"
+  echo "OK: applied STUDIO_DEV_JAVA_OPTS"
+fi
 
 gradle_args=(
   "bootRun"

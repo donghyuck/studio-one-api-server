@@ -16,14 +16,23 @@ logging:
     org.hibernate: ERROR
     dev.langchain4j: DEBUG
     com.zaxxer.hikari: ERROR
-    log4jdbc.log4j2: DEBUG
+    log4jdbc.log4j2: WARN
+    jdbc.sqlonly: INFO
+    jdbc.sqltiming: INFO
+    jdbc.audit: WARN
+    jdbc.resultset: WARN
+    jdbc.resultsettable: WARN
+    jdbc.connection: WARN
     #org.springframework.security.access.intercept.aopalliance.MethodSecurityInterceptor: DEBUG
     #org.springframework.security.access.expression.method: DEBUG
+    studio.one.platform: debug
 spring:
   application:
     name: studio-api
   flyway:
     enabled: true
+    schemas: ${DEFAULT_SCHEMA}
+    default-schema: ${DEFAULT_SCHEMA}
     baseline-on-migrate: true
     baseline-version: 0
     validate-on-migrate: true
@@ -42,6 +51,8 @@ spring:
       - classpath:/schema/skillgraph/postgres
       - classpath:/schema/avatar/postgres
       - classpath:/schema/attachment/postgres
+      - classpath:/schema/document-convert/postgres
+      - classpath:/schema/markdown/postgres
       - classpath:/schema/template/postgres
       - classpath:/schema/mail/postgres
     out-of-order: true
@@ -51,7 +62,7 @@ spring:
     show-sql: false
     properties:
       hibernate:
-        default_schema: studioapi
+        default_schema: ${DEFAULT_SCHEMA}
         format_sql: true
         jdbc:
           time_zone: UTC
@@ -62,10 +73,10 @@ spring:
   ### DATASOURCE Config ###
   datasource:
     primary:
-      url: jdbc:log4jdbc:postgresql://localhost:5432/studio_db
+      url: ${DATASOURCE_URL}
       driver-class-name: net.sf.log4jdbc.sql.jdbcapi.DriverSpy
-      username: studioapi
-      password: studioapi
+      username: ${DATASOURCE_USERNAME}
+      password: ${DATASOURCE_PASSWORD}
       type: com.zaxxer.hikari.HikariDataSource
       hikari:
         minimum-idle: 5 # 최소 유휴 커넥션 수
@@ -131,6 +142,22 @@ studio:
     fallback-to-system-locale: false
   persistence:
     type: jpa
+  bootstrap:
+    user:
+      enabled: true
+      roles:
+        - name: ROLE_ADMIN
+          description: administrator
+        - name: ROLE_USER
+          description: Default user
+      admin:
+        enabled: true
+        username: admin
+        password: ${STUDIO_BOOTSTRAP_ADMIN_PASSWORD}
+        email: admin@example.local
+        name: 스미스
+        roles:
+          - ROLE_ADMIN
   features:
     application-properties:
       enabled: true
@@ -231,14 +258,28 @@ studio:
         enabled: true
   attachment:
     storage:
-      base-dir: var/lib/app/files
+      #base-dir: var/lib/app/files
+      type: database
+      cache-enabled: true
     download-url:
-      public-base-url: http://localhost:8080
+      public-base-url: ${ATTACHMENT_DOWNLOAD_PUBLIC_BASE_URL:http://localhost:8080}
       signing-secret: ${ATTACHMENT_DOWNLOAD_URL_SIGNING_SECRET}
-    thumbnail:
-      enabled: true
-      base-dir: var/lib/app/files/thumbnails
-      ensure-dirs: true
+  document-convert:
+    enabled: true
+    callback-base-url: ${DOCUMENT_CONVERT_CALLBACK_BASE_URL:http://host.docker.internal:8080}
+    callback-token: ${DOCUMENT_CONVERT_CALLBACK_TOKEN}
+    worker:
+      base-url: ${PANDOC_WORKER_BASE_URL:http://localhost:8090}
+      internal-token: ${PANDOC_WORKER_INTERNAL_TOKEN}
+    storage:
+      signed-url-ttl: 10m
+    job:
+      max-retry-count: 2
+  markdown:
+    enabled: true
+    max-source-bytes: 26214400
+    pandoc-version: pandoc
+    textract-version: native
   textract:
     max-extract-size: 50M
     tesseract:
@@ -254,6 +295,9 @@ studio:
           timeout: 60s
           max-file-size: 50MB
   thumbnail:
+    enabled: true
+    base-dir: var/lib/app/files/thumbnails
+    ensure-dirs: true
     default-size: 128
     default-format: png
     min-size: 16
@@ -301,6 +345,27 @@ studio:
         max-size: 1000
   skillgraph:
     persistence: jdbc
+    extraction:
+      mode: llm
+      max-terms: 50
+      rag-job:
+        batch-size: 20
+        worker-count: 2
+        queue-capacity: 100
+        max-chunks: 5000
+        max-text-bytes-per-batch: 1000000
+        lease-duration: 2m
+        recovery-interval: 30s
+        max-auto-retries: 5
+      llm:
+        prompt: skill-extraction
+        max-input-chars: 4000
+        max-output-tokens: 1024
+        temperature: 0.0
+    matching:
+      remote-embedding-enabled: true
+    dataset-import:
+      enabled: true
   chunking:
     enabled: true
     strategy: recursive
@@ -315,12 +380,17 @@ studio:
       summarization: "classpath:prompts/summarization.v1.prompt"
       keyword-extraction: "classpath:prompts/keyword-extraction.v1.prompt"
       rag-cleaner: "classpath:prompts/rag-cleaner.v1.prompt"
+      skill-extraction: "classpath:prompts/skill-extraction.v1.prompt"
+      skill-category-naming: "classpath:prompts/skill-category-naming.v1.prompt"
     rag:
       jobs:
         repository: jdbc
       cache:
         maximum-size: 1000
         ttl: 10m
+      indexing:
+        embedding-batch-size: 8
+        upsert-batch-size: 32
       retry:
         max-attempts: 3
         wait-duration: 2s
@@ -352,9 +422,11 @@ studio:
       embedding-profiles:
         gemini-768:
           provider: google-ai-gemini
-          model: gemini-embedding-001
-          dimension: 768
           supported-input-types: [TEXT, TABLE_TEXT, IMAGE_CAPTION, OCR_TEXT]
+        retrieval-ko-kure:
+          provider: kure
+          supported-input-types: [TEXT, TABLE_TEXT, IMAGE_CAPTION, OCR_TEXT]
+
     endpoints:
       enabled: true
       chat:
@@ -364,6 +436,14 @@ studio:
           max-conversations: 1000
           ttl: 30m
     providers:
+      kure:
+        type: TEI
+        enabled: true
+        base-url: http://localhost:18080
+        embedding:
+          enabled: true
+          model: nlpai-lab/KURE-v1
+          dimension: 1024
       google-ai-gemini:
         enabled: true
         type: GOOGLE_AI_GEMINI
@@ -401,7 +481,7 @@ studio:
         - "http://localhost:3000"
         - "http://192.168.0.156:3000"
       sock-js: false # SockJS fallback 사용 여부
-      jwt-enabled: false # JwtDecoder 사용 시 true
+      jwt-enabled: true # STOMP CONNECT Authorization Bearer 검증
       redis-enabled: false # Redis Pub/Sub 사용 시 true
       redis-channel: studio:realtime:events
   security:
@@ -502,6 +582,7 @@ studio:
         - /api/users/*
         - /api/profile/*/avatar*
         - /api/attachments/signed-download
+        - /api/internal/document-conversions/**
         - /api/forums/**
         - /api/forums/*/topics/*/posts/*/attachments*
         - /actuator/**
