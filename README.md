@@ -139,9 +139,23 @@ java -jar build/libs/*.jar --spring.profiles.active=dev
 ```
 
 ### 접속 정보
-- JDBC: `jdbc:log4jdbc:postgresql://localhost:5432/studio_db`
+- JDBC: `jdbc:postgresql://localhost:5432/studio_db`
 - Username: `studioapi`
 - Password: `studioapi`
+
+### JDBC SQL logging
+
+`LOG4JDBC_ENABLED=false`가 기본값이다. 이 상태에서는 `DATASOURCE_URL`이 기존
+`jdbc:log4jdbc:` 형식이어도 서버가 일반 JDBC URL과 driver로 변환해 batch SQL 문자열 생성 비용을
+피한다. SQL 진단이 필요할 때만 다음과 같이 제한적으로 활성화한다.
+
+```text
+LOG4JDBC_ENABLED=true
+LOG4JDBC_SQLTIMING_LEVEL=INFO
+```
+
+`LOG4JDBC_SQLONLY_LEVEL`, `LOG4JDBC_AUDIT_LEVEL`, `LOG4JDBC_RESULTSET_LEVEL`,
+`LOG4JDBC_RESULTSETTABLE_LEVEL`, `LOG4JDBC_CONNECTION_LEVEL`은 기본 `OFF`이며 필요할 때만 켠다.
 
 ## 보안 주의사항
 - `gradle.properties`에는 민감정보가 포함될 수 있으므로, 실제 값은 사내 보안 정책에 맞게 관리하세요.

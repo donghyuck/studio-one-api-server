@@ -26,6 +26,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -34,7 +35,12 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 @Configuration
 @ConditionalOnClass(name = "javax.sql.DataSource")
+@EnableConfigurationProperties(DataSourceLoggingProperties.class)
 public class DataSourceConfig {
+
+    static final String LOG4JDBC_PREFIX = "jdbc:log4jdbc:";
+    static final String JDBC_PREFIX = "jdbc:";
+    static final String LOG4JDBC_DRIVER = "net.sf.log4jdbc.sql.jdbcapi.DriverSpy";
 
     @Bean(name = "primaryDataSourceProperties")
     @ConfigurationProperties("spring.datasource.primary")
@@ -44,10 +50,46 @@ public class DataSourceConfig {
 
     @Primary
     @Bean(name = "primaryDataSource")
-    public javax.sql.DataSource dataSource(@Qualifier("primaryDataSourceProperties") DataSourceProperties properties) {
+    public javax.sql.DataSource dataSource(
+            @Qualifier("primaryDataSourceProperties") DataSourceProperties properties,
+            DataSourceLoggingProperties loggingProperties) {
+        applyLoggingMode(properties, loggingProperties.isEnabled());
         return properties
                 .initializeDataSourceBuilder()
                 .build();
+    }
+
+    static void applyLoggingMode(DataSourceProperties properties, boolean enabled) {
+        String url = properties.getUrl();
+        if (url == null || url.isBlank()) {
+            return;
+        }
+        if (enabled) {
+            properties.setUrl(toLog4JdbcUrl(url));
+            properties.setDriverClassName(LOG4JDBC_DRIVER);
+            return;
+        }
+        properties.setUrl(toNativeJdbcUrl(url));
+        if (LOG4JDBC_DRIVER.equals(properties.getDriverClassName())) {
+            properties.setDriverClassName(null);
+        }
+    }
+
+    private static String toLog4JdbcUrl(String url) {
+        if (url.startsWith(LOG4JDBC_PREFIX)) {
+            return url;
+        }
+        if (url.startsWith(JDBC_PREFIX)) {
+            return LOG4JDBC_PREFIX + url.substring(JDBC_PREFIX.length());
+        }
+        throw new IllegalArgumentException("Unsupported JDBC URL: expected a jdbc: prefix");
+    }
+
+    private static String toNativeJdbcUrl(String url) {
+        if (url.startsWith(LOG4JDBC_PREFIX)) {
+            return JDBC_PREFIX + url.substring(LOG4JDBC_PREFIX.length());
+        }
+        return url;
     }
 
     @Bean(name = "transactionManager")
