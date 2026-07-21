@@ -497,19 +497,29 @@ studio:
       keywords:
         scope: document
         max-input-chars: 4000
-      default-embedding-profile: gemini-768
+      default-embedding-profile: "google-ai/gemini-embedding-001@768"
       embedding-profiles:
-        gemini-768:
+        "google-ai/gemini-embedding-001@768":
           provider: google-ai-gemini-embedding-001
           model: gemini-embedding-001
-          dimension: 768
-          supported-input-types: [TEXT, TABLE_TEXT, IMAGE_CAPTION, OCR_TEXT]
-        gemini-embedding-2-768:
-          provider: google-ai-gemini-embedding-2
-          model: gemini-embedding-2
+          display-name: Google gemini-embedding-001 (Text, 768 dimensions)
+          aliases: [gemini-768]
           dimension: 768
           supported-input-types: [TEXT, TABLE_TEXT, IMAGE_CAPTION, OCR_TEXT]
           metadata:
+            providerId: google-ai
+            embeddingSpaceId: "google-ai/gemini-embedding-001@768"
+            modality: text
+        "google-ai/gemini-embedding-2@768":
+          provider: google-ai-gemini-embedding-2
+          model: gemini-embedding-2
+          display-name: Google gemini-embedding-2 (Multimodal, 768 dimensions)
+          aliases: [gemini-embedding-2-768]
+          dimension: 768
+          supported-input-types: [TEXT, TABLE_TEXT, IMAGE_CAPTION, OCR_TEXT]
+          metadata:
+            providerId: google-ai
+            embeddingSpaceId: "google-ai/gemini-embedding-2@768"
             lifecycle: current
             multimodal-capable: true
         retrieval-ko-kure:
@@ -581,8 +591,6 @@ studio:
           model: gemini-embedding-2
           model-override: true
           dimension: 768
-        google-embedding:
-          task-type: RETRIEVAL_DOCUMENT
     usage:
       enabled: true
       currency: USD
