@@ -105,20 +105,12 @@ spring:
       base-url: ${LOCAL_GEMMA_BASE_URL:http://192.168.88.69:8000}
       chat:
         enabled: true
-        options:
-          model: ${LOCAL_GEMMA_CHAT_MODEL:gemma-3-4b}
     google:
       genai:
         chat:
           api-key: ${GEMINI_API_KEY:}
-          options:
-            model: gemini-2.5-flash
         embedding:
           api-key: ${GEMINI_API_KEY:}
-          text:
-            options:
-              model: gemini-embedding-001
-              dimensions: 768
 app:
   status-page:
     background-image-url: ${SERVICE_STATUS_BG_URL:}
@@ -294,8 +286,19 @@ studio:
     fallback-to-native-on-pandoc-failure: true
     result-cache-dir: var/lib/app/markdown
     textract-version: native
+    metadata:
+      llm-deployment-id: ${MARKDOWN_METADATA_LLM_DEPLOYMENT_ID:chat-default}
+      prompt-resource: classpath:prompts/document-metadata.v1.prompt
+      type-confidence-threshold: 0.80
+      field-confidence-threshold: 0.85
+      max-pages: 5
+      max-blocks: 40
+      max-characters: 24000
   textract:
     max-extract-size: 50M
+    epub:
+      max-entry-size: 16M
+      max-extracted-size: 128M
     tesseract:
       datapath: /opt/homebrew/share/tessdata
       language: kor+eng
@@ -445,14 +448,51 @@ studio:
     max-size: 800
     overlap: 100
     blockify:
-      enabled: true
-      generator-type: llm
-      llm-provider: google-ai-gemini-2-5-flash
-      llm-model: gemini-2.5-flash
+      enabled: false
   ai:
     routing:
-      default-chat-provider: google-ai-gemini-2-5-flash
-      default-embedding-provider: google-ai-gemini-embedding-001
+      default-chat-deployment: chat-default
+      default-embedding-deployment: humanities-text-v1
+    model-deployments:
+      chat-default:
+        provider-ref: google-ai
+        model-ref: google/gemini-2.5-flash
+        workload: CHAT
+      chat-pro:
+        provider-ref: google-ai
+        model-ref: google/gemini-2.5-pro
+        workload: CHAT
+      local-gemma-v1:
+        provider-ref: local-gemma
+        model-ref: custom/local-gemma-3-4b
+        workload: CHAT
+      humanities-text-v1:
+        provider-ref: google-ai
+        model-ref: google/gemini-embedding-001
+        workload: EMBEDDING
+        normalization-policy: provider-default
+        index-task-type: retrieval_document
+        query-task-type: retrieval_document
+        input-transform-id: text
+        input-transform-version: "1"
+      document-multimodal-v1:
+        provider-ref: google-ai
+        model-ref: google/gemini-embedding-2
+        workload: EMBEDDING
+        normalization-policy: provider-default
+        index-task-type: retrieval_document
+        query-task-type: retrieval_document
+        input-transform-id: text
+        input-transform-version: "1"
+      retrieval-ko-kure-v1:
+        provider-ref: kure
+        model-ref: custom/nlpai-lab-kure-v1
+        workload: EMBEDDING
+        normalization-policy: provider-default
+        index-task-type: provider-default
+        query-task-type: provider-default
+        input-transform-id: text
+        input-transform-version: "1"
     prompts:
       query-rewrite: "classpath:prompts/query-rewrite.v1.prompt"
       summarization: "classpath:prompts/summarization.v1.prompt"
@@ -500,31 +540,16 @@ studio:
       default-embedding-profile: "google-ai/gemini-embedding-001@768"
       embedding-profiles:
         "google-ai/gemini-embedding-001@768":
-          provider: google-ai-gemini-embedding-001
-          model: gemini-embedding-001
-          display-name: Google gemini-embedding-001 (Text, 768 dimensions)
           aliases: [gemini-768]
-          dimension: 768
-          supported-input-types: [TEXT, TABLE_TEXT, IMAGE_CAPTION, OCR_TEXT]
           metadata:
-            providerId: google-ai
-            embeddingSpaceId: "google-ai/gemini-embedding-001@768"
-            modality: text
+            deploymentId: humanities-text-v1
         "google-ai/gemini-embedding-2@768":
-          provider: google-ai-gemini-embedding-2
-          model: gemini-embedding-2
-          display-name: Google gemini-embedding-2 (Multimodal, 768 dimensions)
           aliases: [gemini-embedding-2-768]
-          dimension: 768
-          supported-input-types: [TEXT, TABLE_TEXT, IMAGE_CAPTION, OCR_TEXT]
           metadata:
-            providerId: google-ai
-            embeddingSpaceId: "google-ai/gemini-embedding-2@768"
-            lifecycle: current
-            multimodal-capable: true
+            deploymentId: document-multimodal-v1
         retrieval-ko-kure:
-          provider: kure
-          supported-input-types: [TEXT, TABLE_TEXT, IMAGE_CAPTION, OCR_TEXT]
+          metadata:
+            deploymentId: retrieval-ko-kure-v1
 
     endpoints:
       enabled: true
@@ -538,59 +563,27 @@ studio:
       local-gemma:
         enabled: true
         type: OPENAI
+        api-key: ${LOCAL_GEMMA_API_KEY:local-dev}
         base-url: ${LOCAL_GEMMA_BASE_URL:http://192.168.88.69:8000}
         chat:
           enabled: true
-          model: ${LOCAL_GEMMA_CHAT_MODEL:gemma-3-4b}
       kure:
         type: TEI
         enabled: true
         base-url: ${KURE_BASE_URL:${KURE_BASE_UTL:http://localhost:18080}}
         embedding:
           enabled: true
-          model: nlpai-lab/KURE-v1
-          dimension: 1024
           request-timeout: 5m
-      google-ai-gemini-2-5-flash:
+      google-ai:
         enabled: true
         type: GOOGLE_AI_GEMINI
+        api-key: ${GEMINI_API_KEY:}
         chat:
           enabled: true
-          model: gemini-2.5-flash
-          model-override: true
-        embedding:
-          enabled: false
-      google-ai-gemini-2-5-pro:
-        enabled: true
-        type: GOOGLE_AI_GEMINI
-        chat:
-          enabled: true
-          model: gemini-2.5-pro
-          model-override: true
-        embedding:
-          enabled: false
-      google-ai-gemini-embedding-001:
-        enabled: true
-        type: GOOGLE_AI_GEMINI
-        chat:
-          enabled: false
         embedding:
           enabled: true
-          model: gemini-embedding-001
-          model-override: true
-          dimension: 768
         google-embedding:
           task-type: RETRIEVAL_DOCUMENT
-      google-ai-gemini-embedding-2:
-        enabled: true
-        type: GOOGLE_AI_GEMINI
-        chat:
-          enabled: false
-        embedding:
-          enabled: true
-          model: gemini-embedding-2
-          model-override: true
-          dimension: 768
     usage:
       enabled: true
       currency: USD

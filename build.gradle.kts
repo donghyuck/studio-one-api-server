@@ -111,6 +111,7 @@ dependencies {
     implementation("org.flywaydb:flyway-database-postgresql:${project.findProperty("flywayVersion")}")
     //test
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("studio.one.api:studio-platform-ai-model-catalog:$studioApiVersion")
     //lombok
     val lombokVersion: String = project.findProperty("lombokVersion") as String? ?: "1.18.30"
     compileOnly("org.projectlombok:lombok:$lombokVersion")

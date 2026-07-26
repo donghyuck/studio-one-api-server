@@ -1,0 +1,63 @@
+# Transitional rollback profile. Activate `ai-legacy-rollback` only after removing
+# `studio.ai.model-deployments` and deployment routing from the active environment.
+studio:
+  ai:
+    routing:
+      default-chat-provider: google-ai-gemini-2-5-flash
+      default-embedding-provider: google-ai-gemini-embedding-001
+    providers:
+      local-gemma:
+        enabled: true
+        type: OPENAI
+        api-key: ${LOCAL_GEMMA_API_KEY:local-dev}
+        base-url: ${LOCAL_GEMMA_BASE_URL:http://192.168.88.69:8000}
+        chat:
+          enabled: true
+          model: ${LOCAL_GEMMA_CHAT_MODEL:gemma-3-4b}
+      kure:
+        enabled: true
+        type: TEI
+        base-url: ${KURE_BASE_URL:${KURE_BASE_UTL:http://localhost:18080}}
+        embedding:
+          enabled: true
+          model: nlpai-lab/KURE-v1
+          dimension: 1024
+          request-timeout: 5m
+      google-ai-gemini-2-5-flash:
+        enabled: true
+        type: GOOGLE_AI_GEMINI
+        api-key: ${GEMINI_API_KEY:}
+        chat:
+          enabled: true
+          model: gemini-2.5-flash
+          model-override: true
+      google-ai-gemini-2-5-pro:
+        enabled: true
+        type: GOOGLE_AI_GEMINI
+        api-key: ${GEMINI_API_KEY:}
+        chat:
+          enabled: true
+          model: gemini-2.5-pro
+          model-override: true
+      google-ai-gemini-embedding-001:
+        enabled: true
+        type: GOOGLE_AI_GEMINI
+        api-key: ${GEMINI_API_KEY:}
+        embedding:
+          enabled: true
+          model: gemini-embedding-001
+          model-override: true
+          dimension: 768
+        google-embedding:
+          task-type: RETRIEVAL_DOCUMENT
+      google-ai-gemini-embedding-2:
+        enabled: true
+        type: GOOGLE_AI_GEMINI
+        api-key: ${GEMINI_API_KEY:}
+        embedding:
+          enabled: true
+          model: gemini-embedding-2
+          model-override: true
+          dimension: 768
+        google-embedding:
+          task-type: RETRIEVAL_DOCUMENT
