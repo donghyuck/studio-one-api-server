@@ -29,6 +29,11 @@ logging:
 spring:
   application:
     name: studio-api
+  cache:
+    # RAG exact-answer cache uses StringRedisTemplate directly. Keep existing
+    # @Cacheable domain objects in-process so enabling Redis does not change
+    # their serialization contract.
+    type: caffeine
   flyway:
     enabled: true
     schemas: ${DEFAULT_SCHEMA}
@@ -472,7 +477,7 @@ studio:
         workload: EMBEDDING
         normalization-policy: provider-default
         index-task-type: retrieval_document
-        query-task-type: retrieval_document
+        query-task-type: retrieval_query
         input-transform-id: text
         input-transform-version: "1"
       document-multimodal-v1:
@@ -480,8 +485,8 @@ studio:
         model-ref: google/gemini-embedding-2
         workload: EMBEDDING
         normalization-policy: provider-default
-        index-task-type: retrieval_document
-        query-task-type: retrieval_document
+        index-task-type: provider-default
+        query-task-type: provider-default
         input-transform-id: text
         input-transform-version: "1"
       retrieval-ko-kure-v1:
@@ -501,6 +506,11 @@ studio:
       skill-extraction: "classpath:prompts/skill-extraction.v1.prompt"
       skill-category-naming: "classpath:prompts/skill-category-naming.v1.prompt"
     rag:
+      answer-cache:
+        type: ${RAG_ANSWER_CACHE_TYPE:none}
+        ttl: ${RAG_ANSWER_CACHE_TTL:5m}
+        namespace: ${RAG_ANSWER_CACHE_NAMESPACE:studio:ai:rag-answer:v2}
+        fail-open: true
       jobs:
         repository: jdbc
       cache:
@@ -582,8 +592,6 @@ studio:
           enabled: true
         embedding:
           enabled: true
-        google-embedding:
-          task-type: RETRIEVAL_DOCUMENT
     usage:
       enabled: true
       currency: USD
