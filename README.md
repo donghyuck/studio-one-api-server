@@ -1,5 +1,48 @@
 # Studio One API Server
 
+## 3.x 실행 기준선
+
+`3.x` 서버는 Java 17, Gradle 8.14.5, Spring Boot 4.1.0, Spring AI 2.0.0 및
+`studio-api` `3.0.0-rc.1` artifact를 사용한다. 애플리케이션 JSON 경계는 Jackson 3이며
+MyBatis Spring Boot Starter 4 계열을 사용한다. 개발 worktree에서 플랫폼 소스를 composite
+build로 사용하려면 `-PstudioApiDir=/absolute/path/to/studio-api-3x`를 지정할 수 있다.
+
+2.x와 3.x Studio artifact를 한 runtime classpath에 혼합하지 않는다. 3.x 의존성 검증과
+rollback 기준은 platform 저장소의
+[3.x 업그레이드 기준선](https://github.com/donghyuck/studio-api/blob/3.x/docs/dev/3x-upgrade-baseline.md)을
+따른다.
+
+Spring Boot 4에서는 Flyway 자동구성이 별도 starter로 분리되므로
+`spring-boot-starter-flyway`와 대상 DB 모듈을 함께 유지해야 한다. `flyway-core`만 직접
+추가하면 migration이 실행되지 않은 채 Hibernate schema validation이 시작될 수 있다.
+
+RAG exact-answer cache는 기본적으로 비활성화되어 있으며 다음 환경변수로 전환한다.
+
+```text
+RAG_ANSWER_CACHE_TYPE=none
+RAG_ANSWER_CACHE_TTL=5m
+RAG_ANSWER_CACHE_NAMESPACE=studio:ai:rag-answer:v2
+SPRING_DATA_REDIS_HOST=127.0.0.1
+SPRING_DATA_REDIS_PORT=6379
+```
+
+Redis를 활성화해도 기존 `@Cacheable` 도메인 객체는 Caffeine에 남는다.
+`spring.cache.type=caffeine`은 RAG cache와 별개의 직렬화 경계를 보존하기 위한 설정이므로
+제거하지 않는다.
+
+권장 승격 순서는 다음과 같다.
+
+1. `RAG_ANSWER_CACHE_TYPE=none`으로 ApplicationContext, 인증, AI 정보, RAG sync/SSE를 확인한다.
+2. Redis 연결과 ACL/TLS를 확인하고 `RAG_ANSWER_CACHE_TYPE=redis`로 재기동한다.
+3. 동일 principal/object/evidence 질의에서 `MISS → HIT`를 확인한다.
+4. 문서 revision 또는 packed evidence를 변경했을 때 `MISS`인지 확인한다.
+5. Redis를 중지해도 provider 경로가 HTTP 200으로 응답하는지 확인한다.
+
+롤백할 때는 먼저 `RAG_ANSWER_CACHE_TYPE=none`으로 되돌린 뒤 2.x artifact와 2.1 property
+set을 함께 배포한다. v2 namespace는 이전 Jackson payload와 격리되어 있으므로 cache
+때문에 DB rollback을 수행할 필요는 없다. PostgreSQL이 별도 schema를 사용하면
+`DEFAULT_SCHEMA`와 JDBC URL의 `currentSchema`가 반드시 같은 schema를 가리켜야 한다.
+
 ## gradle.properties 설정 안내
 
 `gradle.properties`에는 빌드/의존성 버전 및 실행에 필요한 환경 설정이 포함됩니다. 아래 항목들을 확인하고, 환경에 맞게 값을 설정하세요.

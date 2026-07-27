@@ -88,16 +88,15 @@ dependencies {
     }
     // spring starters
     implementation("org.springframework.boot:spring-boot-starter-validation")
-    implementation("org.springframework.boot:spring-boot-starter-aop")
-    implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-aspectj")
+    implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-cache")
+    implementation("org.springframework.boot:spring-boot-starter-data-redis")
     implementation("com.github.ben-manes.caffeine:caffeine")
     implementation("org.springframework.boot:spring-boot-starter-mail")
     implementation("org.springframework.boot:spring-boot-starter-websocket")
-    compileOnly("javax.servlet:javax.servlet-api:4.0.1")
-
     implementation("org.springframework.ai:spring-ai-starter-model-openai")
     implementation("org.springframework.ai:spring-ai-google-genai")
     implementation("org.springframework.ai:spring-ai-google-genai-embedding")
@@ -107,7 +106,7 @@ dependencies {
     // database driver
     runtimeOnly("org.postgresql:postgresql:${project.findProperty("postgresqlVersion")}")    
     implementation("org.bgee.log4jdbc-log4j2:log4jdbc-log4j2-jdbc4.1:${project.findProperty("log4jdbcLog4j2Version")}")
-    implementation("org.flywaydb:flyway-core:${project.findProperty("flywayVersion")}")
+    implementation("org.springframework.boot:spring-boot-starter-flyway")
     implementation("org.flywaydb:flyway-database-postgresql:${project.findProperty("flywayVersion")}")
     //test
     testImplementation("org.springframework.boot:spring-boot-starter-test")

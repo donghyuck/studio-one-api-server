@@ -32,10 +32,10 @@ class AiModelDeploymentConfigurationSnapshotTest {
             "local-gemma-v1", new DeploymentSnapshot("local-gemma", "gemma-3-4b", null, null),
             "humanities-text-v1", new DeploymentSnapshot(
                     "google-ai", "gemini-embedding-001", 768,
-                    "es:v1:e41d6629354b5957dfd11ebd46976beedde68e59fd99a01ac3d74ca40fb110ba"),
+                    "es:v1:af68e66cba4cd2f685a1a2c5d3f9f43e1859c70926ac26f62449274626a7b068"),
             "document-multimodal-v1", new DeploymentSnapshot(
                     "google-ai", "gemini-embedding-2", 768,
-                    "es:v1:083d10ec2a0593bb0ed345777d98fba3729d4b251715840c2fd7074b498c6188"),
+                    "es:v1:1649bfdabe493e3a20e5078719dbe0577fbcca494cef88fd4acab1ab77374afa"),
             "retrieval-ko-kure-v1", new DeploymentSnapshot(
                     "kure", "nlpai-lab/KURE-v1", 1024,
                     "es:v1:eb99a8ed70abc5da4e432ea48281ce949c04602df3c38f70c58eb651d7d6a08a"));
@@ -43,6 +43,9 @@ class AiModelDeploymentConfigurationSnapshotTest {
     @Test
     void devDeploymentIdsResolveToReviewedModelsAndEmbeddingSpaces() throws IOException {
         Binder binder = binder("config/application-dev.yml");
+        assertThat(binder.bind("spring.cache.type", Bindable.of(String.class))
+                .orElseThrow(() -> new IllegalStateException("spring.cache.type is missing")))
+                .isEqualTo("caffeine");
         ModelDeploymentProperties properties = binder.bind(
                 "studio.ai", Bindable.of(ModelDeploymentProperties.class))
                 .orElseThrow(() -> new IllegalStateException("studio.ai deployment configuration is missing"));
