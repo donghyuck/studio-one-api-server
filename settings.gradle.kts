@@ -34,7 +34,7 @@ plugins {
 
 rootProject.name = providers.gradleProperty("buildApplicationName").get()
 
-val defaultStudioApiDir = file("../studio-api-3x")
+val defaultStudioApiDir = file("../../studio-api")
 val studioApiDir = providers.gradleProperty("studioApiDir")
     .orNull
     ?.takeIf { it.isNotBlank() }

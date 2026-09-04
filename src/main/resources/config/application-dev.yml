@@ -49,6 +49,7 @@ spring:
       - classpath:/schema/data/postgres
       - classpath:/schema/objecttype/postgres
       - classpath:/schema/user/postgres
+      - classpath:/schema/team/postgres
       - classpath:/schema/security/postgres
       - classpath:/schema/security-acl/postgres
       - classpath:/schema/workspace/postgres
@@ -60,6 +61,8 @@ spring:
       - classpath:/schema/markdown/postgres
       - classpath:/schema/template/postgres
       - classpath:/schema/mail/postgres
+      - classpath:/schema/wiki/postgres
+      - classpath:/schema/web-knowledge/postgres
     out-of-order: true
   ### JPA Config ###
   jpa:
@@ -128,7 +131,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: mappings # 또는 "*"
+        include: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:health}
 studio:
   banner-mode: off
   datasource:
@@ -235,6 +238,17 @@ studio:
       enabled: true
     template:
       enabled: true
+    team:
+      enabled: true
+      persistence: jpa
+      web:
+        enabled: true
+        public-base-path: /api/teams
+    wiki:
+      enabled: true
+      persistence: jpa
+      web:
+        enabled: true
     workspace:
       enabled: true
       company-required: true
@@ -455,6 +469,20 @@ studio:
     blockify:
       enabled: false
   ai:
+    indexed-web:
+      enabled: ${INDEXED_WEB_ENABLED:true}
+      max-selected-sources: ${INDEXED_WEB_MAX_SELECTED_SOURCES:10}
+      crawl:
+        site-crawl-enabled: ${INDEXED_WEB_SITE_CRAWL_ENABLED:true}
+      fetch:
+        allowed-schemes:
+          - https
+        connect-timeout: ${INDEXED_WEB_CONNECT_TIMEOUT:5s}
+        request-timeout: ${INDEXED_WEB_REQUEST_TIMEOUT:15s}
+        max-response-bytes: ${INDEXED_WEB_MAX_RESPONSE_BYTES:5242880}
+        max-normalized-chars: ${INDEXED_WEB_MAX_NORMALIZED_CHARS:2000000}
+        max-redirects: ${INDEXED_WEB_MAX_REDIRECTS:3}
+        robots-enabled: ${INDEXED_WEB_ROBOTS_ENABLED:true}
     routing:
       default-chat-deployment: chat-default
       default-embedding-deployment: humanities-text-v1
@@ -507,7 +535,7 @@ studio:
       skill-category-naming: "classpath:prompts/skill-category-naming.v1.prompt"
     rag:
       answer-cache:
-        type: ${RAG_ANSWER_CACHE_TYPE:none}
+        type: ${RAG_ANSWER_CACHE_TYPE:caffeine}
         ttl: ${RAG_ANSWER_CACHE_TTL:5m}
         namespace: ${RAG_ANSWER_CACHE_NAMESPACE:studio:ai:rag-answer:v2}
         fail-open: true
@@ -549,11 +577,11 @@ studio:
         max-input-chars: 4000
       default-embedding-profile: "google-ai/gemini-embedding-001@768"
       embedding-profiles:
-        "google-ai/gemini-embedding-001@768":
+        "[google-ai/gemini-embedding-001@768]":
           aliases: [gemini-768]
           metadata:
             deploymentId: humanities-text-v1
-        "google-ai/gemini-embedding-2@768":
+        "[google-ai/gemini-embedding-2@768]":
           aliases: [gemini-embedding-2-768]
           metadata:
             deploymentId: document-multimodal-v1
@@ -569,6 +597,26 @@ studio:
           max-messages: 20
           max-conversations: 1000
           ttl: 30m
+      rag:
+        answer-policy:
+          factual-list-partial-answer-enabled: ${RAG_FACTUAL_LIST_PARTIAL_ANSWER_ENABLED:true}
+        source-policy:
+          default-scope: DOCUMENT_ONLY
+          maximum-scope: DOCUMENT_AND_OFFICIAL_EXTERNAL
+          client-selection-enabled: ${RAG_SOURCE_SELECTION_ENABLED:true}
+        external-retrieval-policy:
+          default-mode: OFF
+          maximum-mode: AUTO
+          client-selection-enabled: ${RAG_EXTERNAL_RETRIEVAL_SELECTION_ENABLED:true}
+        external-sources:
+          enabled: ${RAG_EXTERNAL_SOURCES_ENABLED:false}
+          gateway-url: ${RAG_EXTERNAL_SOURCE_GATEWAY_URL:}
+          api-key: ${RAG_EXTERNAL_SOURCE_GATEWAY_API_KEY:}
+          gateway-allowed-hosts: ${RAG_EXTERNAL_SOURCE_GATEWAY_ALLOWED_HOSTS:}
+          source-allowed-hosts: ${RAG_EXTERNAL_SOURCE_ALLOWED_HOSTS:}
+          timeout: ${RAG_EXTERNAL_SOURCE_TIMEOUT:8s}
+          max-results: ${RAG_EXTERNAL_SOURCE_MAX_RESULTS:8}
+          max-response-bytes: ${RAG_EXTERNAL_SOURCE_MAX_RESPONSE_BYTES:1000000}
     providers:
       local-gemma:
         enabled: true
@@ -592,6 +640,7 @@ studio:
           enabled: true
         embedding:
           enabled: true
+          request-timeout: ${GOOGLE_AI_EMBEDDING_REQUEST_TIMEOUT:30s}
     usage:
       enabled: true
       currency: USD
