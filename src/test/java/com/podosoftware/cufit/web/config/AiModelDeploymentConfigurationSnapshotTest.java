@@ -10,6 +10,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.bind.Bindable;
 import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.boot.context.properties.bind.PropertySourcesPlaceholdersResolver;
 import org.springframework.boot.context.properties.source.ConfigurationPropertySources;
 import org.springframework.boot.env.YamlPropertySourceLoader;
 import org.springframework.core.env.MutablePropertySources;
@@ -18,6 +19,7 @@ import org.springframework.core.io.ClassPathResource;
 
 import studio.one.platform.ai.autoconfigure.config.AiAdapterProperties;
 import studio.one.platform.ai.autoconfigure.config.ModelDeploymentProperties;
+import studio.one.platform.ai.autoconfigure.config.RagEmbeddingProperties;
 import studio.one.platform.ai.model.ModelDefinition;
 import studio.one.platform.ai.model.ModelWorkload;
 import studio.one.platform.ai.model.catalog.BuiltInModelCatalog;
@@ -52,9 +54,17 @@ class AiModelDeploymentConfigurationSnapshotTest {
         AiAdapterProperties adapters = binder.bind(
                 "studio.ai", Bindable.of(AiAdapterProperties.class))
                 .orElseThrow(() -> new IllegalStateException("studio.ai provider configuration is missing"));
+        RagEmbeddingProperties ragEmbedding = binder.bind(
+                "studio.ai.rag", Bindable.of(RagEmbeddingProperties.class))
+                .orElseThrow(() -> new IllegalStateException("studio.ai.rag embedding configuration is missing"));
 
         assertThat(properties.getRouting().getDefaultChatDeployment()).isEqualTo("chat-default");
         assertThat(properties.getRouting().getDefaultEmbeddingDeployment()).isEqualTo("humanities-text-v1");
+        assertThat(ragEmbedding.getDefaultEmbeddingProfile())
+                .isEqualTo("google-ai/gemini-embedding-001@768");
+        assertThat(ragEmbedding.getEmbeddingProfiles()).containsKeys(
+                "google-ai/gemini-embedding-001@768",
+                "google-ai/gemini-embedding-2@768");
         assertThat(adapters.getProviders()).containsOnlyKeys("google-ai", "local-gemma", "kure");
         adapters.getProviders().values().forEach(provider -> {
             assertThat(provider.getChat().getModel()).isNull();
@@ -109,7 +119,9 @@ class AiModelDeploymentConfigurationSnapshotTest {
                 resource, new ClassPathResource(resource));
         MutablePropertySources sources = new MutablePropertySources();
         loaded.forEach(sources::addLast);
-        return new Binder(ConfigurationPropertySources.from(sources));
+        return new Binder(
+                ConfigurationPropertySources.from(sources),
+                new PropertySourcesPlaceholdersResolver(sources));
     }
 
     private record DeploymentSnapshot(
