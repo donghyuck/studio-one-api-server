@@ -1,0 +1,32 @@
+# New database/schema only. Do not switch a migrated full database to this location set.
+spring:
+  flyway:
+    locations:
+      - classpath:/schema/data/postgres
+      - classpath:/schema/objecttype/postgres
+      - classpath:/schema/user/postgres
+      - classpath:/schema/team/postgres
+      - classpath:/schema/security/postgres
+      - classpath:/schema/security-acl/postgres
+      - classpath:/schema/workspace/postgres
+      - classpath:/schema/ai/postgres
+      - classpath:/schema/attachment/postgres
+      - classpath:/schema/document-convert/postgres
+      - classpath:/schema/markdown/postgres
+      - classpath:/schema/web-knowledge/postgres
+studio:
+  features:
+    mail:
+      enabled: false
+    template:
+      enabled: false
+    wiki:
+      enabled: false
+    avatar-image:
+      enabled: false
+    skillgraph:
+      enabled: false
+  ai:
+    vector:
+      projection:
+        enabled: false
