@@ -1,5 +1,31 @@
 # Studio One API Server
 
+## 최소 팀 문서 RAG 구성
+
+기본 `-PstudioComposition=full`은 기존 모듈 구성을 유지한다.
+`-PstudioComposition=rag-minimal`은 mail/wiki/template/avatar/skillgraph artifact를 제외하고
+팀·워크스페이스·파일/URL 수집·문서 처리·RAG·권한 기능을 유지한다. 실시간 상태 알림과 썸네일은
+기존 관리자 호환을 위해 유지한다. raw local-cache fallback과 최소 구성의 혼합은 허용하지 않는다.
+
+```sh
+./gradlew -PstudioComposition=rag-minimal verifyStudioComposition
+./gradlew -PstudioComposition=full verifyStudioComposition
+./scripts/run-dev.sh -PstudioComposition=rag-minimal
+```
+
+`bootRun`은 자동으로 `dev,rag-minimal` 프로필을 결합한다. 패키징 후 실행에는 별도 프로필이 필요하다:
+
+```sh
+./gradlew -PstudioComposition=rag-minimal bootJar
+java -jar <생성된-jar-경로> --spring.profiles.active=dev,rag-minimal
+```
+
+**최소 구성은 신규 DB 또는 별도 schema에서 사용한다.** 기존 full DB는 제거된 모듈의 migration 이력이
+있으므로 이 프로필로 단순 전환하지 않는다. Flyway validation을 끄거나 이력을 삭제하지 않는다.
+최소 프로필은 Vector Map을 끄며 일반 RAG는 유지한다. 같은 DB의 저장 자료나 테이블을 삭제하지 않는다.
+이 구성은 아직 실제 신규 DB migration 검증을 별도로 통과해야 한다. `verifyStudioComposition`은
+소스 컴파일과 해결된 classpath만 검사하고 DB에 접속하지 않는다.
+
 ## 3.x 실행 기준선
 
 `3.x` 서버는 Java 17, Gradle 8.14.5, Spring Boot 4.1.0, Spring AI 2.0.0 및

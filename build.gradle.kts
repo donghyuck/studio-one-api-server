@@ -20,6 +20,9 @@ version = prop("buildVersion", "buildApplicationVersion")
 description = findProperty("buildApplicationName") as? String ?: project.name
 val profile = project.findProperty("profile") as String? ?: "dev"
 val isDev = profile == "dev"
+val studioComposition = providers.gradleProperty("studioComposition").getOrElse("full")
+require(studioComposition in setOf("full", "rag-minimal")) { "studioComposition must be full or rag-minimal" }
+val ragMinimal = studioComposition == "rag-minimal"
 val packaging = (findProperty("packaging") as String?) ?: "jar"   
 val isWar = packaging.equals("war", ignoreCase = true)
 logger.lifecycle("📦 [PROFILE] = $profile (isDev=$isDev)")
@@ -41,6 +44,7 @@ val studioLocalCacheJars = if (useStudioLocalCache) {
 } else {
     emptyList()
 }
+require(!ragMinimal || !useStudioLocalCache) { "rag-minimal requires explicit versioned dependencies, not the full local cache fallback" }
 java {
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(javaVersion.toInt()))
@@ -74,16 +78,19 @@ dependencies {
         implementation("studio.one.starter:studio-platform-starter-chunking:$studioApiVersion")
         implementation("studio.one.starter:studio-platform-starter-document-convert:$studioApiVersion")
         implementation("studio.one.starter:studio-platform-starter-markdown:$studioApiVersion")
-        implementation("studio.one.starter:studio-platform-starter-skillgraph:$studioApiVersion")
+        if (!ragMinimal) implementation("studio.one.starter:studio-platform-starter-skillgraph:$studioApiVersion")
         implementation("studio.one.starter:studio-platform-starter-realtime:$studioApiVersion")
         implementation("studio.one.starter:studio-platform-starter-workspace:$studioApiVersion")
         implementation("studio.one.starter:studio-platform-thumbnail-starter:$studioApiVersion")
+        implementation("studio.one.starter:studio-platform-textract-starter:$studioApiVersion")
         // studio one platform applicaiton module & starters
-        implementation("studio.one.starter:studio-application-starter-avatar:$studioApiVersion")
+        if (!ragMinimal) implementation("studio.one.starter:studio-application-starter-avatar:$studioApiVersion")
         implementation("studio.one.starter:studio-application-starter-attachment:$studioApiVersion")
-        implementation("studio.one.starter:studio-application-starter-mail:$studioApiVersion")
-        implementation("studio.one.starter:studio-application-starter-template:$studioApiVersion")
-        implementation("studio.one.starter:studio-application-starter-wiki:$studioApiVersion")
+        if (!ragMinimal) {
+            implementation("studio.one.starter:studio-application-starter-mail:$studioApiVersion")
+            implementation("studio.one.starter:studio-application-starter-template:$studioApiVersion")
+            implementation("studio.one.starter:studio-application-starter-wiki:$studioApiVersion")
+        }
         implementation("studio.one.starter:studio-application-starter-web-knowledge:$studioApiVersion")
         implementation("studio.one.modules:content-embedding-pipeline:$studioApiVersion")
         implementation("studio.one.api:studio-platform-identity:$studioApiVersion")
@@ -98,7 +105,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-cache")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
     implementation("com.github.ben-manes.caffeine:caffeine")
-    implementation("org.springframework.boot:spring-boot-starter-mail")
+    if (!ragMinimal) implementation("org.springframework.boot:spring-boot-starter-mail")
     implementation("org.springframework.boot:spring-boot-starter-websocket")
     implementation("org.springframework.ai:spring-ai-starter-model-openai")
     implementation("org.springframework.ai:spring-ai-google-genai")
@@ -138,6 +145,26 @@ dependencies {
 
 }
 tasks.test { useJUnitPlatform() }
+
+tasks.register("verifyStudioComposition") {
+    group = "verification"
+    description = "Checks the resolved Studio module composition without starting the server or changing a database."
+    dependsOn("classes")
+    doLast {
+        val names = configurations.runtimeClasspath.get().incoming.resolutionResult.allComponents
+            .mapNotNull { it.moduleVersion?.name }.toSet()
+        val required = setOf("studio-platform-ai", "studio-platform-team-default", "studio-platform-workspace-default",
+            "attachment-service", "web-knowledge-service", "content-embedding-pipeline")
+        check(names.containsAll(required)) { "Missing required RAG modules: ${required - names}" }
+        val extensions = setOf("studio-platform-skillgraph", "mail-service", "template-service", "wiki-service", "avatar-service")
+        if (ragMinimal) {
+            check(names.intersect(extensions).isEmpty()) { "Unexpected extensions: ${names.intersect(extensions)}" }
+        } else if (!useStudioLocalCache) {
+            check(names.containsAll(extensions)) { "Full composition lost extensions: ${extensions - names}" }
+        }
+        logger.lifecycle("PASS: Studio composition $studioComposition")
+    }
+}
 tasks.getByName<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
     enabled = !isWar
 }
@@ -148,7 +175,7 @@ tasks.jar {
     enabled = false
 }
 tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
-    systemProperty("spring.profiles.active", profile)
+    systemProperty("spring.profiles.active", if (ragMinimal) "$profile,rag-minimal" else profile)
     logger.lifecycle("📦 [BOOT RUN] spring.profiles.active=$profile")
     if (isDev) {
         val pw = providers.gradleProperty("JASYPT_ENCRYPTOR_PASSWORD").orNull
